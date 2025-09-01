@@ -13,7 +13,6 @@ import { useNavigate } from 'react-router-dom';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import styles from './Builder.module.css';
-import TestModal from './TestModal';
 
 let idCounter = 1;
 const genId = () => String(++idCounter);
@@ -28,7 +27,6 @@ export default function Builder({ botId }) {
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState(null);
-  const [testModalOpen, setTestModalOpen] = useState(false);
   const navigate = useNavigate();
   const flowWrapperRef = useRef(null);
 
@@ -334,7 +332,7 @@ export default function Builder({ botId }) {
     }
   };
 
-  const runBot = () => setTestModalOpen(true);
+  const runBot = () => window.open(`/chat/${botId}`, '_blank');
 
   useEffect(() => {
     loadGraph();
@@ -402,14 +400,6 @@ export default function Builder({ botId }) {
         </div>
       )}
       
-      {/* Test Modal */}
-      {testModalOpen && (
-        <TestModal 
-          botId={botId} 
-          onClose={() => setTestModalOpen(false)} 
-        />
-      )}
-      
       {/* Main container */}
       <div className={styles.container} ref={flowWrapperRef}>
         {/* Test Bot button at top center */}
@@ -422,7 +412,7 @@ export default function Builder({ botId }) {
             Test Bot
           </button>
           <button onClick={saveGraph} disabled={loading} className={styles.saveButton}>Save</button>
-          <button onClick={loadGraph} disabled={loading} className={styles.reloadButton}>Reload</button>
+  <button onClick={loadGraph} disabled={loading} className={styles.reloadButton}>Reload</button>
         </div>
         
         {/* Toggle buttons */}
@@ -436,6 +426,7 @@ export default function Builder({ botId }) {
         <aside className={styles.sidebar} style={{ width: sidebarOpen ? 280 : 0 }}>
           <h2 className={styles.sidebarTitle}>Chatbot Builder</h2>
           <NodeSidebar addNode={addNode} />
+         
         </aside>
         
         {/* Canvas */}
