@@ -412,7 +412,7 @@ export default function Builder({ botId }) {
             Test Bot
           </button>
           <button onClick={saveGraph} disabled={loading} className={styles.saveButton}>Save</button>
-  <button onClick={loadGraph} disabled={loading} className={styles.reloadButton}>Reload</button>
+          <button onClick={loadGraph} disabled={loading} className={styles.reloadButton}>Reload</button>
         </div>
         
         {/* Toggle buttons */}
