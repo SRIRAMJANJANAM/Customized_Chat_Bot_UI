@@ -118,7 +118,6 @@ export default function TestModal({ botId, onClose }) {
         }
       }
 
-      // Handle files
       if (msg.type === 'file') {
         processedMsg.url =
           msg.file ||
@@ -128,12 +127,10 @@ export default function TestModal({ botId, onClose }) {
       }
 
       setTranscript((prev) => {
-        // Generate a unique ID for each message to avoid false duplicates
         const messageId = processedMsg.url 
           ? `media-${processedMsg.url}-${Date.now()}-${Math.random()}`
           : `text-${processedMsg.text}-${Date.now()}-${Math.random()}`;
 
-        // Only check for very recent duplicates (last 5 messages)
         const recentMessages = prev.slice(-5);
         const exists = recentMessages.some(
           (m) => m.url === processedMsg.url && m.text === processedMsg.text
