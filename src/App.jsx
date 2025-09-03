@@ -371,7 +371,7 @@ function Home({ user, logout }) {
               <h3>{bots.length === 0 ? 'No bots yet' : 'Select a bot to edit'}</h3>
               <p>
                 {bots.length === 0 
-                  ? 'Create your first chatbot to get started' 
+                  ? 'Create your first chatbot to get started,               If u r new user please logout and signup, If u are new user please logout and login.' 
                   : 'Choose a bot from the sidebar to begin editing'
                 }
               </p>
