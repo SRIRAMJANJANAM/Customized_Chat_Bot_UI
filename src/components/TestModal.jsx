@@ -51,7 +51,7 @@ export default function TestModal({ botId, onClose }) {
     if (uploadSuccess) {
       const timer = setTimeout(() => {
         setUploadSuccess(false);
-      }, 3000);
+      }, 500);
       
       return () => clearTimeout(timer);
     }
