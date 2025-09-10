@@ -384,6 +384,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  font-weight: bold;
 }
 
 .logout-btn:hover {
@@ -395,7 +396,7 @@ body {
 .builder-container {
   flex: 1;
   padding: 24px;
-  background: #fafafa;
+  background: #ffffff;
   overflow: auto;
   transition: all 0.3s ease;
 }

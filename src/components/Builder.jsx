@@ -114,6 +114,13 @@ export default function Builder({ botId }) {
           height: defaultHeight,
         },
         _ntype: backendNodeType,
+
+        style: {
+      backgroundColor: '#050505ff',   // Yellow background
+      border: '2px solid #000000',  // Black border
+      borderRadius: '8px',
+      color: '#f4f800ff',             // Text color
+    },
       })
     );
   };
@@ -308,6 +315,12 @@ export default function Builder({ botId }) {
           },
           type: 'default',
           _ntype: n.node_type,
+          style: {
+      backgroundColor: '#0a0a0aff',
+      border: '1px solid #faf3f3ff',
+      borderRadius: '9px',
+      color: '#fae100ff',
+    },
         };
       });
 
@@ -320,7 +333,7 @@ export default function Builder({ botId }) {
 
       setNodes(nds);
       setEdges(eds);
-      idCounter = Math.max(1000, ...nds.map((n) => Number(n.id)));
+      idCounter = Math.max(1, ...nds.map((n) => Number(n.id)));
       setSelected(null);
       setOriginalSelected(null);
       setEditModalOpen(false);
@@ -336,7 +349,6 @@ export default function Builder({ botId }) {
 
   useEffect(() => {
     loadGraph();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [botId]);
 
   return (
@@ -446,7 +458,7 @@ export default function Builder({ botId }) {
             fitView
             style={{ width: '100%', height: '100%' }}
           >
-            <Background color="#242425ff" gap={20} variant="dots" size={2} />
+            <Background color="#031bf1ff" gap={20} variant="dots" size={2.5} />
             <Controls />
           </ReactFlow>
         </main>
