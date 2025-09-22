@@ -19,7 +19,7 @@ export default function TestModal({ botId, onClose }) {
     if (!sessionId) {
       setSessionId(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
     }
-  }, [sessionId]);
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -158,8 +158,7 @@ export default function TestModal({ botId, onClose }) {
   };
 
   const onPickFile = (e) => {
-    if (!fileRequested) return; // Don't allow file selection if not requested
-    
+    if (!fileRequested) return; 
     const f = e.target.files?.[0];
     if (!f) return;
     setFile(f);
@@ -296,7 +295,9 @@ export default function TestModal({ botId, onClose }) {
           </div>
 
           <div className="chat-body" ref={scrollRef}>
-            {transcript.map((m) => (
+            {transcript
+              .filter((m) => m.type !== 'path_trigger')
+              .map((m) => (
               <div key={m.id} className={`message ${m.from === 'bot' ? 'bot-message' : m.from === 'system' ? 'system-message' : 'user-message'} ${m.className || ''}`}>
                 {m.from === 'bot' && <div className="message-avatar">🤖</div>}
                 {m.from === 'system' && <div className="message-avatar">⚙️</div>}
@@ -342,7 +343,7 @@ export default function TestModal({ botId, onClose }) {
             <div className="file-request-banner">
               <div className="banner-content">
                 <span className="banner-icon">📎</span>
-                <span>I'm requesting a file. Attach one below and press Send.</span>
+                <span>Bot requesting a file. Attach one below and press Send.</span>
               </div>
             </div>
           )}

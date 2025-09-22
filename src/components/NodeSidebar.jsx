@@ -9,6 +9,7 @@ export default function NodeSidebar({ addNode }) {
     { type: 'file', label: 'File Upload' },
     { type: 'branch', label: 'Branch' },
     { type: 'end', label: 'End' },
+    { type: 'trigger_path', label: 'Trigger Path' }, // Added this line
   ];
 
   return (
@@ -30,7 +31,8 @@ export default function NodeSidebar({ addNode }) {
         📌 <strong>Hint:</strong> Select a node to edit its label or content.<br />
         🔁 Double-click an edge to set a branch condition.<br />
         🖼️ Use <strong>Image</strong> nodes to show pictures.<br />
-        📂 Use <strong>File Upload</strong> nodes to request user uploads.
+        📂 Use <strong>File Upload</strong> nodes to request user uploads.<br />
+        🛣️ Use <strong>Trigger Path</strong> nodes to execute specific conversation paths.
       </p>
     </div>
   );
@@ -38,14 +40,15 @@ export default function NodeSidebar({ addNode }) {
 
 const styles = {
   sidebar: {
-    width: '260px',
+    width: '760px',
     padding: '20px',
-    background: '#0004eeff',
+    background: '#6d19a5ff',
     borderRight: '1px solid #ddd',
     display: 'flex',
     flexDirection: 'column',
     fontFamily: 'Arial, sans-serif',
     boxSizing: 'border-box',
+    borderRadius: '2vw',
   },
   heading: {
     margin: '0 0 20px 0',
