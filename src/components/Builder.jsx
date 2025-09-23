@@ -73,7 +73,6 @@ export default function Builder({ botId }) {
       },
       type: 'default',
       _ntype: n.node_type,
-      // Add pathId to identify which path this node belongs to (if any)
       pathId: isPath ? data.id : null,
       style: {
         backgroundColor: isPath ? '#1a1a1a' : '#0a0a0aff',
@@ -106,11 +105,9 @@ export default function Builder({ botId }) {
   setLoading(true);
   try {
     const { data } = await API.get(`/chatbots/${botId}/`);
-    
-    // Filter out any nodes that belong to paths (they should only be in their respective paths)
     const mainFlowData = {
       ...data,
-      nodes: data.nodes.filter(node => !node.path) // Assuming backend returns path association
+      nodes: data.nodes.filter(node => !node.path) 
     };
     
     const { nds, eds } = convertToFlowFormat(mainFlowData, false);
@@ -121,8 +118,7 @@ export default function Builder({ botId }) {
       .map(n => parseInt(n.id, 10))
       .filter(num => !isNaN(num))
       .reduce((max, curr) => (curr > max ? curr : max), 1);
-    idCounter = maxId;
-    
+    idCounter = maxId;    
     setSelected(null);
     setOriginalSelected(null);
     setEditModalOpen(false);
@@ -158,8 +154,6 @@ export default function Builder({ botId }) {
       setLoading(false);
     }
   };
-
-  // Main Effect Hook to load data on mount or URL change
   useEffect(() => {
     const pathIdFromUrl = searchParams.get('pathId');
 
@@ -169,7 +163,6 @@ export default function Builder({ botId }) {
         await loadPathGraph(pathIdFromUrl);
       } else {
         await loadMainGraph();
-        // Clear path data when switching back to main graph
         setPathNodes([]);
         setPathEdges([]);
         setActivePath(null);
@@ -184,10 +177,7 @@ export default function Builder({ botId }) {
       const currentEdges = activePath ? pathEdges : mainEdges;
       const setCurrentEdges = activePath ? setPathEdges : setMainEdges;
       const currentNodes = activePath ? pathNodes : mainNodes;
-      const targetNode = currentNodes.find(n => n.id === params.target);
-      
-      
-      
+      const targetNode = currentNodes.find(n => n.id === params.target);  
       if (targetNode && targetNode._ntype === 'trigger_path') {
         if (!targetNode.data.triggeredPath || !targetNode.data.triggeredPath.id) {
           window.alert('Cannot connect to this trigger_path node until you select which path it triggers.');
@@ -210,8 +200,6 @@ export default function Builder({ botId }) {
   );
 
   const addNode = (type) => {
-    
-    
     const id = genId();
     const backendNodeType = {
       greeting: 'greeting',
@@ -501,7 +489,6 @@ export default function Builder({ botId }) {
     setActivePath(null);
     setPathNodes([]);
     setPathEdges([]);
-    // Also reload main graph to ensure clean state
     loadMainGraph();
   };
 
@@ -548,8 +535,6 @@ export default function Builder({ botId }) {
         }))
       )
     );
-    
-    // Handle file uploads for path nodes
     pathNodes.forEach((n) => {
       if (
         (n._ntype === 'image' || n._ntype === 'file_upload') &&
@@ -587,7 +572,6 @@ export default function Builder({ botId }) {
       
 
   const saveGraph = async () => {
-  // If we're in path editing mode, save the path instead
   if (activePath) {
     await savePathGraph();
     return;
@@ -596,8 +580,6 @@ export default function Builder({ botId }) {
   setLoading(true);
   try {
     const formData = new FormData();
-    
-    // Only include main flow nodes (those without a path association)
     const mainFlowNodes = mainNodes.filter(node => !node.pathId);
     
     formData.append(
@@ -745,7 +727,6 @@ export default function Builder({ botId }) {
                     value={selected.data.triggeredPath?.id || ''}
                     onChange={(e) => {
                       const pathId = e.target.value;
-                      // Prevent selecting the current path (circular reference)
                       if (activePath && pathId == activePath.id) {
                         alert("Cannot trigger the same path (circular reference).");
                         return;
@@ -759,7 +740,7 @@ export default function Builder({ botId }) {
                   >
                     <option value="">Select a path...</option>
                     {paths
-                      .filter(p => !activePath || p.id !== activePath.id) // Filter out current path
+                      .filter(p => !activePath || p.id !== activePath.id)
                       .map(path => (
                         <option key={path.id} value={path.id}>{path.name}</option>
                       ))
@@ -901,4 +882,4 @@ export default function Builder({ botId }) {
       </div>
     </>
   );
-}
+} 
