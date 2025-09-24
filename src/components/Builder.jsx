@@ -1,11 +1,6 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import ReactFlow, {
-  Background,
-  Controls,
-  addEdge,
-  useEdgesState,
-  useNodesState,
-} from 'reactflow';
+import ReactFlow, {Background,Controls,addEdge,useEdgesState,useNodesState,}
+from 'reactflow';
 import 'reactflow/dist/style.css';
 import { API } from '../api';
 import NodeSidebar from './NodeSidebar';
@@ -39,102 +34,114 @@ export default function Builder({ botId }) {
   const flowWrapperRef = useRef(null);
 
   const convertToFlowFormat = (data, isPath = false) => {
-  const nds = data.nodes.map((n) => {
-    const frontendNodeType = {
-      greeting: 'greeting',
-      user_input: 'user_input',
-      message: 'message',
-      image: 'image',
-      file_upload: 'file',
-      branch: 'branch',
-      end: 'end',
-      trigger_path: 'trigger_path',
-    }[n.node_type] || n.node_type;
+    const nds = data.nodes.map((n) => {
+      const frontendNodeType = {
+        greeting: 'greeting',
+        user_input: 'user_input',
+        message: 'message',
+        message_with_options: 'message_with_options',
+        image: 'image',
+        file_upload: 'file',
+        branch: 'branch',
+        end: 'end',
+        trigger_path: 'trigger_path',
+      }[n.node_type] || n.node_type;
 
-    const label = isPath 
-      ? n.label || `${n.node_type} ${n.id}`
-      : (n.node_type === 'trigger_path'
-          ? `Trigger: ${n.triggered_path?.name || 'None'}`
-          : n.label || `${n.node_type} ${n.id}`);
+      let label = isPath
+        ? n.label || `${n.node_type} ${n.id}`
+        : (n.node_type === 'trigger_path'
+            ? `Trigger Path: ${n.triggered_path?.name || 'None'}`
+            : n.label || `${n.node_type} ${n.id}`);
 
-    return {
-      id: String(n.id),
-      position: { x: n.x, y: n.y },
-      data: {
-        label: label,
-        content: n.content || '',
-        nodeType: frontendNodeType,
-        fileName: n.file_name || null,
-        fileType: n.file_type || null,
-        fileContent: n.file_content || n.image || n.file || null,
-        width: n.width || (frontendNodeType === 'image' ? 200 : null),
-        height: n.height || (frontendNodeType === 'image' ? 150 : null),
-        triggeredPath: isPath ? null : n.triggered_path || null,
-      },
-      type: 'default',
-      _ntype: n.node_type,
-      pathId: isPath ? data.id : null,
-      style: {
-        backgroundColor: isPath ? '#1a1a1a' : '#0a0a0aff',
-        border: isPath ? '0.1vw solid #ff0000ff' : '0.1vw solid #faf3f3ff',
-        borderRadius: '0.9vw',
-        width:'10%',
-        height:'5%',
-        textAlign:"center",
-        fontSize:'1vw',
-        fontFamily:"Georgia', serif",
-        padding:'0.3vw',
-        color: isPath ? '#ffe600ff' : '#00fa36ff',
-        transition: 'transform 0.1s ease',
-        willChange: 'transform',
-      },
-    };
-  });
-  
-  const eds = data.connections.map((c, idx) => ({
-    id: `edge-${idx}`,
-    source: String(c.from_node),
-    target: String(c.to_node),
-    label: c.condition_value || '+',
-  }));
-  
-  return { nds, eds };
-};
+      if (n.node_type === 'message_with_options') {
+        if (n.options && n.options.length > 0) {
+          label = `Options: ${n.options.join(', ')}`;
+        } else {
+          label = 'Message with Options (no options set)';
+        }
+      }
 
- const loadMainGraph = async () => {
-  setLoading(true);
-  try {
-    const { data } = await API.get(`/chatbots/${botId}/`);
-    const mainFlowData = {
-      ...data,
-      nodes: data.nodes.filter(node => !node.path) 
-    };
-    
-    const { nds, eds } = convertToFlowFormat(mainFlowData, false);
-    setMainNodes(nds);
-    setMainEdges(eds);
-    
-    const maxId = nds
-      .map(n => parseInt(n.id, 10))
-      .filter(num => !isNaN(num))
-      .reduce((max, curr) => (curr > max ? curr : max), 1);
-    idCounter = maxId;    
-    setSelected(null);
-    setOriginalSelected(null);
-    setEditModalOpen(false);
-  } catch (err) {
-    console.error('Load error:', err);
-    alert('Load error: ' + (err.response?.data?.message || err.message));
-  } finally {
-    setLoading(false);
-  }
-};
+      return {
+        id: String(n.id),
+        position: { x: n.x, y: n.y },
+        data: {
+          label: label,
+          content: n.content || '',
+          nodeType: frontendNodeType,
+          fileName: n.file_name || null,
+          fileType: n.file_type || null,
+          fileContent: n.file_content || n.image || n.file || null,
+          width: n.width || (frontendNodeType === 'image' ? 200 : null),
+          height: n.height || (frontendNodeType === 'image' ? 150 : null),
+          triggeredPath: isPath ? null : n.triggered_path || null,
+          options: n.options || [],
+          // FIXED: Use the correct backend field name
+          optionsDisplayStyle: n.options_display_style || 'dropdown',
+        },
+        type: 'default',
+        _ntype: n.node_type,
+        pathId: isPath ? data.id : null,
+        style: {
+          backgroundColor: isPath ? '#1a1a1a' : '#0a0a0aff',
+          border: isPath ? '0.1vw solid #ff0000ff' : '0.1vw solid #faf3f3ff',
+          borderRadius: '0.9vw',
+          width: '10%',
+          height: '5%',
+          textAlign: "center",
+          fontSize: '1vw',
+          fontFamily: "Georgia', serif",
+          padding: '0.3vw',
+          color: isPath ? '#ffe600ff' : '#00fa36ff',
+          transition: 'transform 0.1s ease',
+          willChange: 'transform',
+        },
+      };
+    });
+
+    const eds = data.connections.map((c, idx) => ({
+      id: `edge-${idx}`,
+      source: String(c.from_node),
+      target: String(c.to_node),
+      label: c.condition_value || '+',
+    }));
+
+    return { nds, eds };
+  };
+
+  const loadMainGraph = async () => {
+    setLoading(true);
+    try {
+      const { data } = await API.get(`/chatbots/${botId}/`);
+      const mainFlowData = {
+        ...data,
+        nodes: data.nodes.filter(node => !node.path)
+      };
+
+      const { nds, eds } = convertToFlowFormat(mainFlowData, false);
+      setMainNodes(nds);
+      setMainEdges(eds);
+
+      const maxId = nds
+        .map(n => parseInt(n.id, 10))
+        .filter(num => !isNaN(num))
+        .reduce((max, curr) => (curr > max ? curr : max), 1);
+      idCounter = maxId;
+      setSelected(null);
+      setOriginalSelected(null);
+      setEditModalOpen(false);
+    } catch (err) {
+      console.error('Load error:', err);
+      alert('Load error: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadPathGraph = async (pathId) => {
     setLoading(true);
     try {
       const { data } = await API.get(`/paths/${pathId}/graph/`);
-      const { nds, eds } = convertToFlowFormat(data,true);
+      const { nds, eds } = convertToFlowFormat(data, true);
       setPathNodes(nds);
       setPathEdges(eds);
       const pathInfo = paths.find(p => p.id == pathId);
@@ -154,6 +161,7 @@ export default function Builder({ botId }) {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     const pathIdFromUrl = searchParams.get('pathId');
 
@@ -177,7 +185,7 @@ export default function Builder({ botId }) {
       const currentEdges = activePath ? pathEdges : mainEdges;
       const setCurrentEdges = activePath ? setPathEdges : setMainEdges;
       const currentNodes = activePath ? pathNodes : mainNodes;
-      const targetNode = currentNodes.find(n => n.id === params.target);  
+      const targetNode = currentNodes.find(n => n.id === params.target);
       if (targetNode && targetNode._ntype === 'trigger_path') {
         if (!targetNode.data.triggeredPath || !targetNode.data.triggeredPath.id) {
           window.alert('Cannot connect to this trigger_path node until you select which path it triggers.');
@@ -205,6 +213,7 @@ export default function Builder({ botId }) {
       greeting: 'greeting',
       user_input: 'user_input',
       message: 'message',
+      message_with_options: 'message_with_options',
       image: 'image',
       file: 'file_upload',
       branch: 'branch',
@@ -218,12 +227,14 @@ export default function Builder({ botId }) {
       greeting: 'Welcome! What topic do you need help with?',
       user_input: 'Type your answer…',
       message: 'Here is some information…',
+      message_with_options: 'Please select an option:',
       branch: '',
       end: 'Goodbye!',
       image: '',
       file: '',
       trigger_path: 'Select a path to trigger...',
     }[type] || '';
+
     const defaultWidth = type === 'image' ? 200 : null;
     const defaultHeight = type === 'image' ? 150 : null;
     const currentNodes = activePath ? pathNodes : mainNodes;
@@ -231,6 +242,7 @@ export default function Builder({ botId }) {
     const position = isFirstNode
       ? { x: window.innerWidth / 2 - 100, y: 100 }
       : { x: 120 + Math.random() * 320, y: 80 + Math.random() * 280 };
+
     const newNode = {
       id,
       type: 'default',
@@ -238,7 +250,9 @@ export default function Builder({ botId }) {
       data: {
         label: type === 'trigger_path'
           ? 'Trigger: None'
-          : `${type} ${id}`,
+          : type === 'message_with_options'
+            ? 'Message with Options'
+            : `${type} ${id}`,
         content: defaultContent,
         nodeType: type,
         fileName: null,
@@ -247,6 +261,8 @@ export default function Builder({ botId }) {
         width: defaultWidth,
         height: defaultHeight,
         triggeredPath: triggeredPath,
+        options: type === 'message_with_options' ? ['Option 1', 'Option 2'] : [],
+        optionsDisplayStyle: type === 'message_with_options' ? 'dropdown' : null,
       },
       _ntype: backendNodeType,
       pathId: activePath ? activePath.id : null,
@@ -276,6 +292,7 @@ export default function Builder({ botId }) {
       }
     }
   };
+
   const onNodeDoubleClick = (_, node) => {
     if (window.confirm(`Delete node "${node.data.label}"?`)) deleteNode(node.id);
   };
@@ -336,7 +353,7 @@ export default function Builder({ botId }) {
   const saveNodeChanges = async () => {
     if (!selected) return;
     if (activePath) {
-    updateSelected('triggeredPath', null);
+      updateSelected('triggeredPath', null);
     }
     if (!activePath && selected._ntype === 'trigger_path' && !selected.id.startsWith('new-')) {
       try {
@@ -492,140 +509,144 @@ export default function Builder({ botId }) {
     loadMainGraph();
   };
 
- const savePathGraph = async () => {
-  if (!activePath) return;
-  setLoading(true);
-  try {
-    const formData = new FormData();
+  const savePathGraph = async () => {
+    if (!activePath) return;
+    setLoading(true);
+    try {
+      const formData = new FormData();
 
-    const pathFlowNodes = pathNodes.filter(
-      (node) => node.pathId === activePath.id
-    );
-    
-    
-    formData.append(
-      'nodes',
-      JSON.stringify(
-        pathNodes.map((n) => ({
-          id: n.id,
-          _ntype: n._ntype,
-          position: n.position,
-          triggered_path_id: n._ntype === 'trigger_path' ? n.data.triggeredPath?.id || null : null,
-          data: {
-            label: n.data.label,
-            content: n.data.content,
-            width: n.data.width,
-            height: n.data.height,
-            fileName: n.data.fileName,
-            fileType: n.data.fileType,
-            fileContent: n.data.fileContent,
-          },
-        }))
-      )
-    );
-    
-    formData.append(
-      'edges',
-      JSON.stringify(
-        pathEdges.map((e) => ({
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          label: e.label || '+',
-        }))
-      )
-    );
-    pathNodes.forEach((n) => {
-      if (
-        (n._ntype === 'image' || n._ntype === 'file_upload') &&
-        n.data.fileContent?.startsWith('data:')
-      ) {
-        try {
-          const base64Data = n.data.fileContent.split(',')[1];
-          const mimeString = n.data.fileContent.split(',')[0].split(':')[1].split(';')[0];
-          const byteString = atob(base64Data);
-          const ab = new ArrayBuffer(byteString.length);
-          const ia = new Uint8Array(ab);
-          for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-          const blob = new Blob([ab], { type: mimeString });
-          formData.append(n.id, blob, n.data.fileName);
-        } catch (error) {
-          console.error('Error processing file for node', n.id, error);
+      const pathFlowNodes = pathNodes.filter(
+        (node) => node.pathId === activePath.id
+      );
+
+      formData.append(
+        'nodes',
+        JSON.stringify(
+          pathNodes.map((n) => ({
+            id: n.id,
+            _ntype: n._ntype,
+            position: n.position,
+            triggered_path_id: n._ntype === 'trigger_path' ? n.data.triggeredPath?.id || null : null,
+            data: {
+              label: n.data.label,
+              content: n.data.content,
+              width: n.data.width,
+              height: n.data.height,
+              fileName: n.data.fileName,
+              fileType: n.data.fileType,
+              fileContent: n.data.fileContent,
+              options: n.data.options || [],
+              // FIXED: Use the correct backend field name
+              options_display_style: n.data.optionsDisplayStyle || 'dropdown',
+            },
+          }))
+        )
+      );
+
+      formData.append(
+        'edges',
+        JSON.stringify(
+          pathEdges.map((e) => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            label: e.label || '+',
+          }))
+        )
+      );
+      pathNodes.forEach((n) => {
+        if (
+          (n._ntype === 'image' || n._ntype === 'file_upload') &&
+          n.data.fileContent?.startsWith('data:')
+        ) {
+          try {
+            const base64Data = n.data.fileContent.split(',')[1];
+            const mimeString = n.data.fileContent.split(',')[0].split(':')[1].split(';')[0];
+            const byteString = atob(base64Data);
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+            const blob = new Blob([ab], { type: mimeString });
+            formData.append(n.id, blob, n.data.fileName);
+          } catch (error) {
+            console.error('Error processing file for node', n.id, error);
+          }
         }
-      }
-    });
-    
-    const response = await API.post(`/paths/${activePath.id}/save_graph/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    
-    console.log('Save response:', response.data);
-    alert('Path saved successfully!');
-  } catch (err) {
-    console.error('Save path error:', err);
-    console.error('Error response:', err.response);
-    alert('Save path error: ' + (err.response?.data?.error || err.response?.data?.message || err.message));
-  } finally {
-    setLoading(false);
-  }
-};
-      
+      });
+
+      const response = await API.post(`/paths/${activePath.id}/save_graph/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      console.log('Save response:', response.data);
+      alert('Path saved successfully!');
+    } catch (err) {
+      console.error('Save path error:', err);
+      console.error('Error response:', err.response);
+      alert('Save path error: ' + (err.response?.data?.error || err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const saveGraph = async () => {
-  if (activePath) {
-    await savePathGraph();
-    return;
-  }
-  
-  setLoading(true);
-  try {
-    const formData = new FormData();
-    const mainFlowNodes = mainNodes.filter(node => !node.pathId);
-    
-    formData.append(
-      'nodes',
-      JSON.stringify(
-        mainFlowNodes.map((n) => ({
-          id: n.id,
-          _ntype: n._ntype,
-          position: n.position,
-          triggered_path_id: n._ntype === 'trigger_path' ? n.data.triggeredPath?.id || null : null,
-          data: {
-            label: n.data.label,
-            content: n.data.content,
-            width: n.data.width,
-            height: n.data.height,
-            fileName: n.data.fileName,
-            fileType: n.data.fileType,
-            fileContent: n.data.fileContent,
-          },
-        }))
-      )
-    );
-    
-    formData.append(
-      'edges',
-      JSON.stringify(
-        mainEdges.map((e) => ({
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          label: e.label || '+',
-        }))
-      )
-    );
-    
-    await API.post(`/chatbots/${botId}/save_graph/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    alert('Graph saved successfully!');
-  } catch (err) {
-    console.error('Save error:', err);
-    alert('Save error: ' + (err.response?.data?.message || err.message));
-  } finally {
-    setLoading(false);
-  }
-};
+    if (activePath) {
+      await savePathGraph();
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      const mainFlowNodes = mainNodes.filter(node => !node.pathId);
+
+      formData.append(
+        'nodes',
+        JSON.stringify(
+          mainFlowNodes.map((n) => ({
+            id: n.id,
+            _ntype: n._ntype,
+            position: n.position,
+            triggered_path_id: n._ntype === 'trigger_path' ? n.data.triggeredPath?.id || null : null,
+            data: {
+              label: n.data.label,
+              content: n.data.content,
+              width: n.data.width,
+              height: n.data.height,
+              fileName: n.data.fileName,
+              fileType: n.data.fileType,
+              fileContent: n.data.fileContent,
+              options: n.data.options || [],
+              // FIXED: Use the correct backend field name
+              options_display_style: n.data.optionsDisplayStyle || 'dropdown',
+            },
+          }))
+        )
+      );
+
+      formData.append(
+        'edges',
+        JSON.stringify(
+          mainEdges.map((e) => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            label: e.label || '+',
+          }))
+        )
+      );
+
+      await API.post(`/chatbots/${botId}/save_graph/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      alert('Graph saved successfully!');
+    } catch (err) {
+      console.error('Save error:', err);
+      alert('Save error: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!selected) return;
@@ -637,7 +658,15 @@ export default function Builder({ botId }) {
         updateSelected('label', newLabel);
       }
     }
-  }, [selected?.data.triggeredPath]);
+    if (selected._ntype === 'message_with_options') {
+      const newLabel = selected.data.options && selected.data.options.length > 0
+        ? `Options: ${selected.data.options.join(', ')}`
+        : 'Message with Options (no options set)';
+      if (selected.data.label !== newLabel) {
+        updateSelected('label', newLabel);
+      }
+    }
+  }, [selected?.data.triggeredPath, selected?.data.options]);
 
   return (
     <>
@@ -720,6 +749,104 @@ export default function Builder({ botId }) {
               <input value={selected.data.label} onChange={(e) => updateSelected('label', e.target.value)} className={styles.input} />
               <label className={styles.label}>Content</label>
               <ReactQuill theme="snow" value={selected.data.content} onChange={(v) => updateSelected('content', v)} className={styles.quillEditor} />
+
+              {/* Message with Options Section */}
+              {selected._ntype === 'message_with_options' && (
+                <>
+                  <label className={styles.label}>Options</label>
+                  <div className={styles.optionsContainer}>
+                    {selected.data.options && selected.data.options.map((option, index) => (
+                      <div key={index} className={styles.optionItem}>
+                        <input
+                          type="text"
+                          value={option}
+                          onChange={(e) => {
+                            const newOptions = [...selected.data.options];
+                            newOptions[index] = e.target.value;
+                            updateSelected('options', newOptions);
+                          }}
+                          className={styles.optionInput}
+                          placeholder={`Option ${index + 1}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newOptions = selected.data.options.filter((_, i) => i !== index);
+                            updateSelected('options', newOptions);
+                          }}
+                          className={styles.removeOptionButton}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newOptions = [...(selected.data.options || []), ''];
+                        updateSelected('options', newOptions);
+                      }}
+                      className={styles.addOptionButton}
+                    >
+                      + Add Option
+                    </button>
+                  </div>
+
+                  <label className={styles.label} style={{ marginTop: '10px' }}>Display Style</label>
+                  <select
+                    value={selected.data.optionsDisplayStyle || 'dropdown'}
+                    onChange={(e) => updateSelected('optionsDisplayStyle', e.target.value)}
+                    className={styles.input}
+                  >
+                    <option value="dropdown">Dropdown</option>
+                    <option value="horizontal-buttons">Horizontal Buttons</option>
+                    <option value="vertical-buttons">Vertical Buttons</option>
+                  </select>
+
+                  {/* Preview of options */}
+                  {selected.data.options && selected.data.options.filter(opt => opt.trim() !== '').length > 0 && (
+                    <div style={{ marginTop: '10px' }}>
+                      <label className={styles.label}>Preview:</label>
+                      {selected.data.optionsDisplayStyle === 'dropdown' && (
+                        <select disabled style={{ padding: '5px', fontSize: '14px' }}>
+                          {selected.data.options.filter(opt => opt.trim() !== '').map((option, index) => (
+                            <option key={index}>{option}</option>
+                          ))}
+                        </select>
+                      )}
+                      {(selected.data.optionsDisplayStyle === 'horizontal-buttons' || selected.data.optionsDisplayStyle === 'vertical-buttons') && (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: selected.data.optionsDisplayStyle === 'horizontal-buttons' ? 'row' : 'column',
+                          gap: '5px',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '5px'
+                        }}>
+                          {selected.data.options.filter(opt => opt.trim() !== '').map((option, index) => (
+                            <button
+                              key={index}
+                              style={{
+                                padding: '5px 10px',
+                                border: '1px solid #007bff',
+                                borderRadius: '15px',
+                                background: '#f8f9fa',
+                                color: '#007bff',
+                                fontSize: '12px',
+                                cursor: 'default'
+                              }}
+                              disabled
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
               {selected._ntype === 'trigger_path' && (
                 <>
                   <label className={styles.label}>Select Path to Trigger</label>
@@ -882,4 +1009,4 @@ export default function Builder({ botId }) {
       </div>
     </>
   );
-} 
+}

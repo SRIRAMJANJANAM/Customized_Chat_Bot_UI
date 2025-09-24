@@ -7,12 +7,14 @@ export default function TestModal({ botId, onClose }) {
   const [transcript, setTranscript] = useState([]);
   const [running, setRunning] = useState(false);
   const [currentNodeId, setCurrentNodeId] = useState(null);
+  const [activePathId, setActivePathId] = useState(null);
   const [file, setFile] = useState(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [fileRequested, setFileRequested] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [selectedOption, setSelectedOption] = useState(null);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -28,6 +30,8 @@ export default function TestModal({ botId, onClose }) {
   useEffect(() => {
     if (transcript.length > 0) {
       const lastMessage = transcript[transcript.length - 1];
+      
+      // Check if it's a file request
       const isFileRequest = lastMessage.from === 'bot' && 
         (lastMessage.type === 'file_request' || 
          (lastMessage.text && (
@@ -39,11 +43,18 @@ export default function TestModal({ botId, onClose }) {
          )));
       
       setFileRequested(isFileRequest);
-      if (isFileRequest) {
-        //  add some visual indication 
+      
+      // Check if it's a message with options
+      const isMessageWithOptions = lastMessage.from === 'bot' && 
+        lastMessage.type === 'message_with_options';
+      
+      if (isMessageWithOptions) {
+        // Reset selected option when new options appear
+        setSelectedOption(null);
       }
     } else {
       setFileRequested(false);
+      setSelectedOption(null);
     }
   }, [transcript]);
 
@@ -64,10 +75,12 @@ export default function TestModal({ botId, onClose }) {
         const { data } = await API.post(`/chatbots/${botId}/run/`, {
           user_inputs: {},
           current_node_id: null,
+          active_path_id: null,
           session_id: sessionId,
         });
         await addBotMessagesWithDelay(data?.message?.transcript || []);
         setCurrentNodeId(data?.message?.current_node_id ?? null);
+        setActivePathId(data?.active_path_id ?? null);
       } catch {
         setTranscript((prev) => {
           const exists = prev.some(
@@ -118,12 +131,20 @@ export default function TestModal({ botId, onClose }) {
         }
       }
 
+      // Handle files
       if (msg.type === 'file') {
         processedMsg.url =
           msg.file ||
           msg.file_content ||
           msg.file_url ||
           (msg.content?.startsWith('data:') ? msg.content : null);
+      }
+
+      // FIXED: Handle message_with_options - get display style from backend data
+      if (msg.type === 'message_with_options') {
+        processedMsg.options = msg.options || [];
+        // Use the display style from backend, fallback to vertical-buttons
+        processedMsg.optionsDisplayStyle = msg.options_display_style || msg.optionsDisplayStyle || 'vertical-buttons';
       }
 
       setTranscript((prev) => {
@@ -148,6 +169,69 @@ export default function TestModal({ botId, onClose }) {
       });
 
       await delay(400);
+    }
+  };
+
+  // Handle option selection
+  const handleOptionSelect = async (option) => {
+    if (running) return;
+    
+    setSelectedOption(option);
+    setRunning(true);
+
+    // Add user's selection to transcript
+    setTranscript((prev) => [
+      ...prev,
+      { 
+        from: 'user', 
+        type: 'text', 
+        text: option, 
+        timestamp: new Date().toISOString(),
+        id: `user-option-${Date.now()}-${Math.random()}`
+      },
+    ]);
+
+    try {
+      const { data } = await API.post(`/chatbots/${botId}/run/`, { 
+        user_inputs: { input: option }, 
+        current_node_id: currentNodeId,
+        active_path_id: activePathId,
+        session_id: sessionId
+      });
+
+      // Process the response
+      if (data?.message) {
+        await addBotMessagesWithDelay(data.message.transcript || []);
+        setCurrentNodeId(data.message.current_node_id ?? null);
+        setActivePathId(data.active_path_id ?? null);
+        
+        if (data.uploaded_file || data.message.uploaded_file) {
+          setUploadSuccess(true);
+        }
+      } else {
+        await addBotMessagesWithDelay(data?.transcript || []);
+        setCurrentNodeId(data?.current_node_id ?? null);
+        setActivePathId(data?.active_path_id ?? null);
+        
+        if (data?.uploaded_file) {
+          setUploadSuccess(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error sending option:', error);
+      setTranscript((prev) => [
+        ...prev,
+        { 
+          from: 'bot', 
+          type: 'text', 
+          text: 'Error occurred while processing your selection', 
+          timestamp: new Date().toISOString(),
+          id: `error-${Date.now()}-${Math.random()}`
+        },
+      ]);
+    } finally {
+      setRunning(false);
+      setSelectedOption(null);
     }
   };
 
@@ -210,6 +294,7 @@ export default function TestModal({ botId, onClose }) {
         const form = new FormData();
         form.append('user_inputs[input]', message || '');
         if (currentNodeId) form.append('current_node_id', currentNodeId);
+        if (activePathId) form.append('active_path_id', activePathId);
         form.append('session_id', sessionId);
         form.append('file', file);
         
@@ -220,25 +305,25 @@ export default function TestModal({ botId, onClose }) {
         ({ data } = await API.post(`/chatbots/${botId}/run/`, { 
           user_inputs: { input: message }, 
           current_node_id: currentNodeId,
+          active_path_id: activePathId,
           session_id: sessionId
         }));
       }
 
-      // Process the response correctly - handle both response formats
+      // Process the response correctly
       if (data?.message) {
         await addBotMessagesWithDelay(data.message.transcript || []);
         setCurrentNodeId(data.message.current_node_id ?? null);
+        setActivePathId(data.active_path_id ?? null);
         
-        // Handle file upload success - show toast but don't add extra message
         if (data.uploaded_file || data.message.uploaded_file) {
           setUploadSuccess(true);
         }
       } else {
-        // Handle case where response format is different
         await addBotMessagesWithDelay(data?.transcript || []);
         setCurrentNodeId(data?.current_node_id ?? null);
+        setActivePathId(data?.active_path_id ?? null);
         
-        // Handle file upload success for alternative response format
         if (data?.uploaded_file) {
           setUploadSuccess(true);
         }
@@ -260,7 +345,6 @@ export default function TestModal({ botId, onClose }) {
       setMessage('');
       clearAttachment();
       
-      // After sending a file, reset the file request state
       if (file) {
         setFileRequested(false);
       }
@@ -279,6 +363,83 @@ export default function TestModal({ botId, onClose }) {
     return isNaN(date) ? '' : date.toLocaleString();
   };
 
+  // Check if we're currently showing options (last message is message_with_options)
+  const isShowingOptions = () => {
+    if (transcript.length === 0) return false;
+    const lastMessage = transcript[transcript.length - 1];
+    return lastMessage.from === 'bot' && lastMessage.type === 'message_with_options';
+  };
+
+  // Render options based on the display style set in builder
+  const renderOptions = (message) => {
+    const displayStyle = message.optionsDisplayStyle || 'dropdown';
+    
+    switch (displayStyle) {
+      case 'dropdown':
+        return (
+          <select 
+            onChange={(e) => handleOptionSelect(e.target.value)}
+            disabled={running || selectedOption !== null}
+            className="options-dropdown"
+            value=""
+          >
+            <option value="">Select an option...</option>
+            {message.options && message.options.map((option, index) => (
+              <option key={index} value={option}>{option}</option>
+            ))}
+          </select>
+        );
+      
+      case 'horizontal-buttons':
+        return (
+          <div className="options-container horizontal">
+            {message.options && message.options.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleOptionSelect(option)}
+                disabled={running || selectedOption !== null}
+                className={`option-button ${selectedOption === option ? 'selected' : ''}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        );
+      
+      case 'vertical-buttons':
+        return (
+          <div className="options-container vertical">
+            {message.options && message.options.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleOptionSelect(option)}
+                disabled={running || selectedOption !== null}
+                className={`option-button ${selectedOption === option ? 'selected' : ''}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        );
+      
+      default:
+        return (
+          <div className="options-container">
+            {message.options && message.options.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleOptionSelect(option)}
+                disabled={running || selectedOption !== null}
+                className={`option-button ${selectedOption === option ? 'selected' : ''}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        );
+    }
+  };
+
   return (
     <>
       <div className="modal-overlay">
@@ -288,10 +449,11 @@ export default function TestModal({ botId, onClose }) {
               <div className="bot-avatar">🤖</div>
               <div className="bot-details">
                 <h3>Chat with Bot</h3>
-                <div className={`bot-status ${running ? 'typing' : 'online'}`}>{running ? 'Typing...' : 'Online'}</div>
+                <div className={`bot-status ${running ? 'typing' : 'online'}`}>
+                  {running ? 'Typing...' : 'Online'}
+                </div>
               </div>
             </div>
-            
           </div>
 
           <div className="chat-body" ref={scrollRef}>
@@ -319,6 +481,11 @@ export default function TestModal({ botId, onClose }) {
                     <a href={m.url} target="_blank" rel="noopener noreferrer" className="file-chip">📎 {m.name || 'File'}</a>
                   ) : m.type === 'file' ? (
                     <span className="file-chip">📎 {m.name || 'File'}</span>
+                  ) : m.type === 'message_with_options' ? (
+                    <div className="message-with-options">
+                      <div className="options-message-text" dangerouslySetInnerHTML={{ __html: m.text }} />
+                      {renderOptions(m)}
+                    </div>
                   ) : (
                     <span dangerouslySetInnerHTML={{ __html: m.text }} />
                   )}
@@ -348,6 +515,17 @@ export default function TestModal({ botId, onClose }) {
             </div>
           )}
 
+          {/* Show options banner when options are available */}
+          {isShowingOptions() && (
+            <div className="options-banner">
+              <div className="banner-content">
+                <span className="banner-icon">📋</span>
+                <span>Please select an option from above</span>
+              </div>
+            </div>
+          )}
+
+          {/* Always show input area */}
           <div className={`chat-input-container ${fileRequested ? 'file-requested' : ''}`}>
             <div className="input-wrapper">
               <input 
@@ -368,7 +546,9 @@ export default function TestModal({ botId, onClose }) {
                 />
                 📎
               </label>
-              <button onClick={sendMessage} disabled={running || (!message.trim() && !file)} className="send-button">Send</button>
+              <button onClick={sendMessage} disabled={running || (!message.trim() && !file)} className="send-button">
+                Send
+              </button>
             </div>
 
             {file && <div className="attachment-row">

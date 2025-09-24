@@ -721,3 +721,146 @@
   color: #495057;
   font-style: italic;
 }
+/* NEW: Message with Options Styles */
+.message-with-options {
+  width: 100%;
+}
+
+.options-message-text {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: #f0f0f0;
+  border-radius: 8px;
+}
+
+.options-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.option-button {
+  padding: 8px 16px;
+  border: 2px solid #007bff;
+  background: white;
+  color: #007bff;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.option-button:hover:not(:disabled) {
+  background: #1eff00;
+  color: black;
+  font-weight: bolder;
+}
+
+.option-button.selected {
+  background: #007bff;
+  color: white;
+}
+
+.option-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* NEW: Options Banner */
+.options-banner {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  padding: 10px;
+  text-align: center;
+  color: #856404;
+}
+
+.options-banner .banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.options-banner .banner-icon {
+  font-size: 16px;
+}
+/* Options Styling */
+.message-with-options {
+  margin: 10px 0;
+}
+
+.options-message-text {
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.options-dropdown {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.options-container {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.options-container.horizontal {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.options-container.vertical {
+  flex-direction: column;
+}
+
+.option-button {
+  padding: 8px 16px;
+  border: 1px solid #007bff;
+  border-radius: 20px;
+  background: #f8f9fa;
+  color: #007bff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.option-button:hover:not(:disabled) {
+  background: #00ff2a;
+  color: rgb(7, 7, 7);
+  border: 1px solid #ff0000;
+}
+
+.option-button.selected {
+  background: #007bff;
+  color: white;
+}
+
+.option-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.options-banner {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  padding: 10px;
+  text-align: center;
+  font-size: 14px;
+  color: #856404;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
