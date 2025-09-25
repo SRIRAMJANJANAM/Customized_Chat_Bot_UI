@@ -1,12 +1,10 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import ReactFlow, {Background,Controls,addEdge,useEdgesState,useNodesState,}
-from 'reactflow';
+import ReactFlow, { Background, Controls, addEdge, useEdgesState, useNodesState } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { API } from '../api';
 import NodeSidebar from './NodeSidebar';
+import EditPropertiesModal from './EditPropertiesModal';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
 import styles from './Builder.module.css';
 
 let idCounter = 1;
@@ -45,6 +43,7 @@ export default function Builder({ botId }) {
         branch: 'branch',
         end: 'end',
         trigger_path: 'trigger_path',
+        google_sheet: 'google_sheet',
       }[n.node_type] || n.node_type;
 
       let label = isPath
@@ -61,6 +60,10 @@ export default function Builder({ botId }) {
         }
       }
 
+      if (n.node_type === 'google_sheet') {
+        label = n.google_sheet_url ? `Google Sheet: ${n.google_sheet_url.substring(0, 30)}...` : 'Send to Google Sheet';
+      }
+
       return {
         id: String(n.id),
         position: { x: n.x, y: n.y },
@@ -73,10 +76,13 @@ export default function Builder({ botId }) {
           fileContent: n.file_content || n.image || n.file || null,
           width: n.width || (frontendNodeType === 'image' ? 200 : null),
           height: n.height || (frontendNodeType === 'image' ? 150 : null),
-          triggeredPath: isPath ? null : n.triggered_path || null,
+          triggeredPath: n.triggered_path || null,
           options: n.options || [],
-          // FIXED: Use the correct backend field name
           optionsDisplayStyle: n.options_display_style || 'dropdown',
+          googleSheetUrl: n.google_sheet_url || null,
+          googleSheetName: n.google_sheet_name || null,
+          googleSheetHeaders: n.google_sheet_headers || null,
+          googleSheetDataMapping: n.google_sheet_data_mapping || null,
         },
         type: 'default',
         _ntype: n.node_type,
@@ -94,6 +100,7 @@ export default function Builder({ botId }) {
           color: isPath ? '#ffe600ff' : '#00fa36ff',
           transition: 'transform 0.1s ease',
           willChange: 'transform',
+          overflow:'hidden'
         },
       };
     });
@@ -219,6 +226,7 @@ export default function Builder({ botId }) {
       branch: 'branch',
       end: 'end',
       trigger_path: 'trigger_path',
+      google_sheet: 'google_sheet',
     }[type] || type;
 
     const triggeredPath = activePath ? null : null;
@@ -233,6 +241,7 @@ export default function Builder({ botId }) {
       image: '',
       file: '',
       trigger_path: 'Select a path to trigger...',
+      google_sheet: 'User input data will be sent to Google Sheet',
     }[type] || '';
 
     const defaultWidth = type === 'image' ? 200 : null;
@@ -252,6 +261,8 @@ export default function Builder({ botId }) {
           ? 'Trigger: None'
           : type === 'message_with_options'
             ? 'Message with Options'
+            : type === 'google_sheet'
+            ? 'Send to Google Sheet'
             : `${type} ${id}`,
         content: defaultContent,
         nodeType: type,
@@ -263,6 +274,10 @@ export default function Builder({ botId }) {
         triggeredPath: triggeredPath,
         options: type === 'message_with_options' ? ['Option 1', 'Option 2'] : [],
         optionsDisplayStyle: type === 'message_with_options' ? 'dropdown' : null,
+        googleSheetUrl: null,
+        googleSheetName: null,
+        googleSheetHeaders: null,
+        googleSheetDataMapping: null,
       },
       _ntype: backendNodeType,
       pathId: activePath ? activePath.id : null,
@@ -536,8 +551,11 @@ export default function Builder({ botId }) {
               fileType: n.data.fileType,
               fileContent: n.data.fileContent,
               options: n.data.options || [],
-              // FIXED: Use the correct backend field name
               options_display_style: n.data.optionsDisplayStyle || 'dropdown',
+              google_sheet_url: n.data.googleSheetUrl || null,
+              google_sheet_name: n.data.googleSheetName || null,
+              google_sheet_headers: n.data.googleSheetHeaders || null,
+              google_sheet_data_mapping: n.data.googleSheetDataMapping || null,
             },
           }))
         )
@@ -617,8 +635,11 @@ export default function Builder({ botId }) {
               fileType: n.data.fileType,
               fileContent: n.data.fileContent,
               options: n.data.options || [],
-              // FIXED: Use the correct backend field name
               options_display_style: n.data.optionsDisplayStyle || 'dropdown',
+              google_sheet_url: n.data.googleSheetUrl || null,
+              google_sheet_name: n.data.googleSheetName || null,
+              google_sheet_headers: n.data.googleSheetHeaders || null,
+              google_sheet_data_mapping: n.data.googleSheetDataMapping || null,
             },
           }))
         )
@@ -666,7 +687,15 @@ export default function Builder({ botId }) {
         updateSelected('label', newLabel);
       }
     }
-  }, [selected?.data.triggeredPath, selected?.data.options]);
+    if (selected._ntype === 'google_sheet') {
+      const newLabel = selected.data.googleSheetUrl
+        ? `Google Sheet: ${selected.data.googleSheetUrl.substring(0, 30)}...`
+        : 'Send to Google Sheet';
+      if (selected.data.label !== newLabel) {
+        updateSelected('label', newLabel);
+      }
+    }
+  }, [selected?.data.triggeredPath, selected?.data.options, selected?.data.googleSheetUrl]);
 
   return (
     <>
@@ -690,6 +719,7 @@ export default function Builder({ botId }) {
           </div>
         </div>
       )}
+      
       {/* Create Path Modal */}
       {createPathModalOpen && (
         <div className={styles.overlay} onClick={() => setCreatePathModalOpen(false)}>
@@ -722,6 +752,7 @@ export default function Builder({ botId }) {
           </div>
         </div>
       )}
+      
       {/* Context menu */}
       {contextMenu && (
         <div className={styles.contextMenu} style={{ top: contextMenu.top, left: contextMenu.left }}>
@@ -736,180 +767,22 @@ export default function Builder({ botId }) {
           </div>
         </div>
       )}
-      {/* Edit modal */}
-      {editModalOpen && selected && (
-        <div className={styles.overlay} onClick={() => setEditModalOpen(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Edit Node Properties</h3>
-              <button onClick={() => setEditModalOpen(false)} className={styles.closeButton}>✕</button>
-            </div>
-            <section style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <label className={styles.label}>Label</label>
-              <input value={selected.data.label} onChange={(e) => updateSelected('label', e.target.value)} className={styles.input} />
-              <label className={styles.label}>Content</label>
-              <ReactQuill theme="snow" value={selected.data.content} onChange={(v) => updateSelected('content', v)} className={styles.quillEditor} />
-
-              {/* Message with Options Section */}
-              {selected._ntype === 'message_with_options' && (
-                <>
-                  <label className={styles.label}>Options</label>
-                  <div className={styles.optionsContainer}>
-                    {selected.data.options && selected.data.options.map((option, index) => (
-                      <div key={index} className={styles.optionItem}>
-                        <input
-                          type="text"
-                          value={option}
-                          onChange={(e) => {
-                            const newOptions = [...selected.data.options];
-                            newOptions[index] = e.target.value;
-                            updateSelected('options', newOptions);
-                          }}
-                          className={styles.optionInput}
-                          placeholder={`Option ${index + 1}`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newOptions = selected.data.options.filter((_, i) => i !== index);
-                            updateSelected('options', newOptions);
-                          }}
-                          className={styles.removeOptionButton}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newOptions = [...(selected.data.options || []), ''];
-                        updateSelected('options', newOptions);
-                      }}
-                      className={styles.addOptionButton}
-                    >
-                      + Add Option
-                    </button>
-                  </div>
-
-                  <label className={styles.label} style={{ marginTop: '10px' }}>Display Style</label>
-                  <select
-                    value={selected.data.optionsDisplayStyle || 'dropdown'}
-                    onChange={(e) => updateSelected('optionsDisplayStyle', e.target.value)}
-                    className={styles.input}
-                  >
-                    <option value="dropdown">Dropdown</option>
-                    <option value="horizontal-buttons">Horizontal Buttons</option>
-                    <option value="vertical-buttons">Vertical Buttons</option>
-                  </select>
-
-                  {/* Preview of options */}
-                  {selected.data.options && selected.data.options.filter(opt => opt.trim() !== '').length > 0 && (
-                    <div style={{ marginTop: '10px' }}>
-                      <label className={styles.label}>Preview:</label>
-                      {selected.data.optionsDisplayStyle === 'dropdown' && (
-                        <select disabled style={{ padding: '5px', fontSize: '14px' }}>
-                          {selected.data.options.filter(opt => opt.trim() !== '').map((option, index) => (
-                            <option key={index}>{option}</option>
-                          ))}
-                        </select>
-                      )}
-                      {(selected.data.optionsDisplayStyle === 'horizontal-buttons' || selected.data.optionsDisplayStyle === 'vertical-buttons') && (
-                        <div style={{
-                          display: 'flex',
-                          flexDirection: selected.data.optionsDisplayStyle === 'horizontal-buttons' ? 'row' : 'column',
-                          gap: '5px',
-                          padding: '10px',
-                          border: '1px solid #ddd',
-                          borderRadius: '5px'
-                        }}>
-                          {selected.data.options.filter(opt => opt.trim() !== '').map((option, index) => (
-                            <button
-                              key={index}
-                              style={{
-                                padding: '5px 10px',
-                                border: '1px solid #007bff',
-                                borderRadius: '15px',
-                                background: '#f8f9fa',
-                                color: '#007bff',
-                                fontSize: '12px',
-                                cursor: 'default'
-                              }}
-                              disabled
-                            >
-                              {option}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-
-              {selected._ntype === 'trigger_path' && (
-                <>
-                  <label className={styles.label}>Select Path to Trigger</label>
-                  <select
-                    value={selected.data.triggeredPath?.id || ''}
-                    onChange={(e) => {
-                      const pathId = e.target.value;
-                      if (activePath && pathId == activePath.id) {
-                        alert("Cannot trigger the same path (circular reference).");
-                        return;
-                      }
-                      const path = paths.find(p => p.id == pathId);
-                      updateSelected('triggeredPath', path || null);
-                      const newLabel = path ? `Trigger: ${path.name}` : 'Trigger: None';
-                      updateSelected('label', newLabel);
-                    }}
-                    className={styles.input}
-                  >
-                    <option value="">Select a path...</option>
-                    {paths
-                      .filter(p => !activePath || p.id !== activePath.id)
-                      .map(path => (
-                        <option key={path.id} value={path.id}>{path.name}</option>
-                      ))
-                    }
-                  </select>
-                </>
-              )}
-              {(selected._ntype === 'image' || selected._ntype === 'file_upload') && (
-                <>
-                  <label className={styles.label}>Upload File</label>
-                  <input type="file" onChange={handleFileChange} className={styles.input} />
-                  {selected.data.fileContent && (
-                    <div style={{ marginTop: 5 }}>
-                      {selected._ntype === 'image' ? (
-                        <img
-                          src={selected.data.fileContent}
-                          alt={selected.data.fileName}
-                          style={{ width: selected.data.width || 200, height: selected.data.height || 150, objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <a href={selected.data.fileContent} target="_blank" rel="noopener noreferrer">{selected.data.fileName}</a>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-              <div className={styles.actionButtons}>
-                <button onClick={saveNodeChanges} className={`${styles.actionButton} ${styles.saveBtn}`}>Save</button>
-                <button onClick={cancelNodeChanges} className={`${styles.actionButton} ${styles.cancelBtn}`}>Cancel</button>
-                <button
-                  onClick={() => {
-                    if (window.confirm(`Delete node "${selected.data.label}"?`)) deleteNode(selected.id);
-                  }}
-                  className={`${styles.actionButton} ${styles.deleteBtn}`}
-                >
-                  Delete
-                </button>
-              </div>
-            </section>
-          </div>
-        </div>
+      
+      {/* Edit Properties Modal */}
+      {editModalOpen && (
+        <EditPropertiesModal
+          selected={selected}
+          updateSelected={updateSelected}
+          handleFileChange={handleFileChange}
+          paths={paths}
+          activePath={activePath}
+          onSave={saveNodeChanges}
+          onCancel={cancelNodeChanges}
+          onDelete={deleteNode}
+          onClose={() => setEditModalOpen(false)}
+        />
       )}
+      
       {/* Main container */}
       <div className={styles.container} ref={flowWrapperRef}>
         {/* Top controls */}
@@ -931,6 +804,7 @@ export default function Builder({ botId }) {
             {pathPanelOpen ? 'Hide Paths' : 'Show Paths'}
           </button>
         </div>
+        
         {/* Path Panel */}
         {pathPanelOpen && (
           <div className={styles.pathPanel}>
@@ -968,6 +842,7 @@ export default function Builder({ botId }) {
             </div>
           </div>
         )}
+        
         {/* Canvas */}
         <main className={styles.canvasWrapper}>
           {activePath ? (

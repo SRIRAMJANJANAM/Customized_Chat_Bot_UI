@@ -27,6 +27,7 @@ export default function NodeSidebar({ addNode }) {
     { type: 'branch', label: 'Branch', icon: '🔀' },
     { type: 'end', label: 'End', icon: '⏹️' },
     { type: 'trigger_path', label: 'Trigger Path', icon: '⚡' },
+    { type: 'google_sheet', label: 'Send to Google Sheet',icon:'📗' },
   ];
 
   // Filter items based on search term
