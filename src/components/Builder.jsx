@@ -22,14 +22,30 @@ export default function Builder({ botId }) {
   const [contextMenu, setContextMenu] = useState(null);
   const [addNodePopupOpen, setAddNodePopupOpen] = useState(false);
   const [paths, setPaths] = useState([]);
+  const [filteredPaths, setFilteredPaths] = useState([]);
   const [pathPanelOpen, setPathPanelOpen] = useState(true);
   const [createPathModalOpen, setCreatePathModalOpen] = useState(false);
   const [newPathName, setNewPathName] = useState('');
   const [newPathDescription, setNewPathDescription] = useState('');
   const [activePath, setActivePath] = useState(null);
+  const [pathSearchTerm, setPathSearchTerm] = useState('');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const flowWrapperRef = useRef(null);
+
+  // Filter paths based on search term
+  useEffect(() => {
+    if (!pathSearchTerm.trim()) {
+      setFilteredPaths(paths);
+    } else {
+      const searchLower = pathSearchTerm.toLowerCase();
+      const filtered = paths.filter(path => 
+        path.name.toLowerCase().includes(searchLower) ||
+        (path.description && path.description.toLowerCase().includes(searchLower))
+      );
+      setFilteredPaths(filtered);
+    }
+  }, [paths, pathSearchTerm]);
 
   const convertToFlowFormat = (data, isPath = false) => {
     const nds = data.nodes.map((n) => {
@@ -71,9 +87,9 @@ export default function Builder({ botId }) {
           label: label,
           content: n.content || '',
           nodeType: frontendNodeType,
-          fileName: n.file_name || null,
-          fileType: n.file_type || null,
-          fileContent: n.file_content || n.image || n.file || null,
+          fileName: n.fileName || null,
+          fileType: n.fileType || null,
+          fileContent: n.fileContent || n.image || n.file || null,
           width: n.width || (frontendNodeType === 'image' ? 200 : null),
           height: n.height || (frontendNodeType === 'image' ? 150 : null),
           triggeredPath: n.triggered_path || null,
@@ -456,6 +472,7 @@ export default function Builder({ botId }) {
     try {
       const { data } = await API.get(`/paths/?chatbot=${botId}`);
       setPaths(data);
+      setFilteredPaths(data);
     } catch (err) {
       console.error('Error loading paths:', err);
     }
@@ -812,11 +829,37 @@ export default function Builder({ botId }) {
               <h3>Paths</h3>
               <button onClick={() => setCreatePathModalOpen(true)} className={styles.addPathButton}>+</button>
             </div>
+            
+            {/* Search Bar */}
+            <div className={styles.searchContainer}>
+              <input
+                type="text"
+                placeholder="Search paths by name .."
+                value={pathSearchTerm}
+                onChange={(e) => setPathSearchTerm(e.target.value)}
+                className={styles.searchInput}
+              />
+              {pathSearchTerm && (
+                <button 
+                  onClick={() => setPathSearchTerm('')}
+                  className={styles.clearSearchButton}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            
             <div className={styles.pathList}>
-              {paths.length === 0 ? (
-                <p className={styles.noPaths}>No paths created yet</p>
+              {filteredPaths.length === 0 ? (
+                <div className={styles.noPaths}>
+                  {pathSearchTerm ? (
+                    <p>No paths found matching "{pathSearchTerm}"</p>
+                  ) : (
+                    <p>No paths created yet</p>
+                  )}
+                </div>
               ) : (
-                paths.map(path => (
+                filteredPaths.map(path => (
                   <div key={path.id} className={styles.pathItem}>
                     <div className={styles.pathInfo}>
                       <h4>{path.name}</h4>
