@@ -109,6 +109,7 @@ export default function TestModal({ botId, onClose }) {
 
   const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
+  // FIXED: Improved message processing for options
   const addBotMessagesWithDelay = async (messages) => {
     for (const msg of messages || []) {
       const processedMsg = { ...msg };
@@ -140,11 +141,32 @@ export default function TestModal({ botId, onClose }) {
           (msg.content?.startsWith('data:') ? msg.content : null);
       }
 
-      // FIXED: Handle message_with_options - get display style from backend data
+      // FIXED: Better handling of message_with_options
       if (msg.type === 'message_with_options') {
-        processedMsg.options = msg.options || [];
+        // Extract options from various possible backend formats
+        processedMsg.options = msg.options || 
+                              msg.choices || 
+                              msg.buttons || 
+                              (msg.content && typeof msg.content === 'object' ? msg.content.options : []) || 
+                              [];
+        
+        // Ensure options is an array
+        if (!Array.isArray(processedMsg.options)) {
+          processedMsg.options = [processedMsg.options];
+        }
+        
         // Use the display style from backend, fallback to vertical-buttons
-        processedMsg.optionsDisplayStyle = msg.options_display_style || msg.optionsDisplayStyle || 'vertical-buttons';
+        processedMsg.optionsDisplayStyle = msg.options_display_style || 
+                                          msg.optionsDisplayStyle || 
+                                          msg.display_style || 
+                                          'vertical-buttons';
+        
+        // Ensure we have text content
+        if (!processedMsg.text && msg.content && typeof msg.content === 'object') {
+          processedMsg.text = msg.content.text || msg.content.message || 'Please choose an option:';
+        } else if (!processedMsg.text) {
+          processedMsg.text = 'Please choose an option:';
+        }
       }
 
       setTranscript((prev) => {
@@ -152,9 +174,12 @@ export default function TestModal({ botId, onClose }) {
           ? `media-${processedMsg.url}-${Date.now()}-${Math.random()}`
           : `text-${processedMsg.text}-${Date.now()}-${Math.random()}`;
 
-        const recentMessages = prev.slice(-5);
+        // FIXED: Less restrictive duplicate checking for options
+        const recentMessages = prev.slice(-10);
         const exists = recentMessages.some(
-          (m) => m.url === processedMsg.url && m.text === processedMsg.text
+          (m) => m.type === processedMsg.type && 
+                 m.text === processedMsg.text && 
+                 JSON.stringify(m.options) === JSON.stringify(processedMsg.options)
         );
         
         if (exists) return prev;
@@ -199,7 +224,7 @@ export default function TestModal({ botId, onClose }) {
         session_id: sessionId
       });
 
-      // Process the response
+      // FIXED: Better response handling for options
       if (data?.message) {
         await addBotMessagesWithDelay(data.message.transcript || []);
         setCurrentNodeId(data.message.current_node_id ?? null);
@@ -208,14 +233,17 @@ export default function TestModal({ botId, onClose }) {
         if (data.uploaded_file || data.message.uploaded_file) {
           setUploadSuccess(true);
         }
-      } else {
-        await addBotMessagesWithDelay(data?.transcript || []);
-        setCurrentNodeId(data?.current_node_id ?? null);
-        setActivePathId(data?.active_path_id ?? null);
+      } else if (data?.transcript) {
+        await addBotMessagesWithDelay(data.transcript);
+        setCurrentNodeId(data.current_node_id ?? null);
+        setActivePathId(data.active_path_id ?? null);
         
-        if (data?.uploaded_file) {
+        if (data.uploaded_file) {
           setUploadSuccess(true);
         }
+      } else {
+        // Fallback for unexpected response format
+        console.warn('Unexpected response format:', data);
       }
     } catch (error) {
       console.error('Error sending option:', error);
@@ -319,12 +347,12 @@ export default function TestModal({ botId, onClose }) {
         if (data.uploaded_file || data.message.uploaded_file) {
           setUploadSuccess(true);
         }
-      } else {
-        await addBotMessagesWithDelay(data?.transcript || []);
-        setCurrentNodeId(data?.current_node_id ?? null);
-        setActivePathId(data?.active_path_id ?? null);
+      } else if (data?.transcript) {
+        await addBotMessagesWithDelay(data.transcript);
+        setCurrentNodeId(data.current_node_id ?? null);
+        setActivePathId(data.active_path_id ?? null);
         
-        if (data?.uploaded_file) {
+        if (data.uploaded_file) {
           setUploadSuccess(true);
         }
       }
@@ -372,7 +400,11 @@ export default function TestModal({ botId, onClose }) {
 
   // Render options based on the display style set in builder
   const renderOptions = (message) => {
-    const displayStyle = message.optionsDisplayStyle || 'dropdown';
+    if (!message.options || message.options.length === 0) {
+      return <div className="no-options">No options available</div>;
+    }
+
+    const displayStyle = message.optionsDisplayStyle || 'vertical-buttons';
     
     switch (displayStyle) {
       case 'dropdown':
@@ -384,7 +416,7 @@ export default function TestModal({ botId, onClose }) {
             value=""
           >
             <option value="">Select an option...</option>
-            {message.options && message.options.map((option, index) => (
+            {message.options.map((option, index) => (
               <option key={index} value={option}>{option}</option>
             ))}
           </select>
@@ -393,7 +425,7 @@ export default function TestModal({ botId, onClose }) {
       case 'horizontal-buttons':
         return (
           <div className="options-container horizontal">
-            {message.options && message.options.map((option, index) => (
+            {message.options.map((option, index) => (
               <button
                 key={index}
                 onClick={() => handleOptionSelect(option)}
@@ -407,25 +439,10 @@ export default function TestModal({ botId, onClose }) {
         );
       
       case 'vertical-buttons':
-        return (
-          <div className="options-container vertical">
-            {message.options && message.options.map((option, index) => (
-              <button
-                key={index}
-                onClick={() => handleOptionSelect(option)}
-                disabled={running || selectedOption !== null}
-                className={`option-button ${selectedOption === option ? 'selected' : ''}`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        );
-      
       default:
         return (
-          <div className="options-container">
-            {message.options && message.options.map((option, index) => (
+          <div className="options-container vertical">
+            {message.options.map((option, index) => (
               <button
                 key={index}
                 onClick={() => handleOptionSelect(option)}

@@ -62,7 +62,7 @@ const EditPropertiesModal = ({
                 placeholder="Sheet1"
               />
               
-              <label className={styles.subLabel}>Headers (comma-separated)</label>
+              {/* <label className={styles.subLabel}>Headers (comma-separated)</label>
               <input
                 type="text"
                 value={selected.data.googleSheetHeaders || ''}
@@ -78,7 +78,7 @@ const EditPropertiesModal = ({
                 className={styles.textarea}
                 placeholder='{"name": "user_name", "email": "user_email"}'
                 rows={4}
-              />
+              /> */}
               
               <div className={styles.helpText}>
                 <strong>How it works:</strong> When a user types a response in this node, the data will be automatically sent to your Google Sheet. Make sure the Google Sheet is set to public or you have proper authentication.
