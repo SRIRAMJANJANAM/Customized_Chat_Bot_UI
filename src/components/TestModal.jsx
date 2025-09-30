@@ -30,8 +30,6 @@ export default function TestModal({ botId, onClose }) {
   useEffect(() => {
     if (transcript.length > 0) {
       const lastMessage = transcript[transcript.length - 1];
-      
-      // Check if it's a file request
       const isFileRequest = lastMessage.from === 'bot' && 
         (lastMessage.type === 'file_request' || 
          (lastMessage.text && (
@@ -44,12 +42,10 @@ export default function TestModal({ botId, onClose }) {
       
       setFileRequested(isFileRequest);
       
-      // Check if it's a message with options
       const isMessageWithOptions = lastMessage.from === 'bot' && 
         lastMessage.type === 'message_with_options';
       
       if (isMessageWithOptions) {
-        // Reset selected option when new options appear
         setSelectedOption(null);
       }
     } else {
@@ -109,12 +105,9 @@ export default function TestModal({ botId, onClose }) {
 
   const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
-  // FIXED: Improved message processing for options
   const addBotMessagesWithDelay = async (messages) => {
   for (const msg of messages || []) {
     const processedMsg = { ...msg };
-
-    // Handle images
     if (msg.type === 'image') {
       processedMsg.url =
         msg.image ||
@@ -131,8 +124,6 @@ export default function TestModal({ botId, onClose }) {
         processedMsg.text = '[Image not available]';
       }
     }
-
-    // Handle files
     if (msg.type === 'file') {
       processedMsg.url =
         msg.file ||
@@ -140,8 +131,6 @@ export default function TestModal({ botId, onClose }) {
         msg.file_url ||
         (msg.content?.startsWith('data:') ? msg.content : null);
     }
-
-    // Handle message_with_options
     if (msg.type === 'message_with_options') {
       processedMsg.options = msg.options || 
                             msg.choices || 
@@ -169,8 +158,6 @@ export default function TestModal({ botId, onClose }) {
       const messageId = processedMsg.url 
         ? `media-${processedMsg.url}-${Date.now()}-${Math.random()}`
         : `text-${processedMsg.text}-${Date.now()}-${Math.random()}`;
-
-      // ✅ Improved duplicate check
       const recentMessages = prev.slice(-10);
       const exists = recentMessages.some((m) => {
         if (processedMsg.type === 'image') {
@@ -206,14 +193,11 @@ export default function TestModal({ botId, onClose }) {
   };
 
 
-  // Handle option selection
   const handleOptionSelect = async (option) => {
     if (running) return;
     
     setSelectedOption(option);
     setRunning(true);
-
-    // Add user's selection to transcript
     setTranscript((prev) => [
       ...prev,
       { 
@@ -232,8 +216,6 @@ export default function TestModal({ botId, onClose }) {
         active_path_id: activePathId,
         session_id: sessionId
       });
-
-      // FIXED: Better response handling for options
       if (data?.message) {
         await addBotMessagesWithDelay(data.message.transcript || []);
         setCurrentNodeId(data.message.current_node_id ?? null);
@@ -251,7 +233,6 @@ export default function TestModal({ botId, onClose }) {
           setUploadSuccess(true);
         }
       } else {
-        // Fallback for unexpected response format
         console.warn('Unexpected response format:', data);
       }
     } catch (error) {
@@ -347,7 +328,6 @@ export default function TestModal({ botId, onClose }) {
         }));
       }
 
-      // Process the response correctly
       if (data?.message) {
         await addBotMessagesWithDelay(data.message.transcript || []);
         setCurrentNodeId(data.message.current_node_id ?? null);
@@ -399,15 +379,11 @@ export default function TestModal({ botId, onClose }) {
     const date = new Date(iso);
     return isNaN(date) ? '' : date.toLocaleString();
   };
-
-  // Check if we're currently showing options (last message is message_with_options)
   const isShowingOptions = () => {
     if (transcript.length === 0) return false;
     const lastMessage = transcript[transcript.length - 1];
     return lastMessage.from === 'bot' && lastMessage.type === 'message_with_options';
   };
-
-  // Render options based on the display style set in builder
   const renderOptions = (message) => {
     if (!message.options || message.options.length === 0) {
       return <div className="no-options">No options available</div>;
