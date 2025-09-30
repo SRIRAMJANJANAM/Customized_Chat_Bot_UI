@@ -111,91 +111,100 @@ export default function TestModal({ botId, onClose }) {
 
   // FIXED: Improved message processing for options
   const addBotMessagesWithDelay = async (messages) => {
-    for (const msg of messages || []) {
-      const processedMsg = { ...msg };
+  for (const msg of messages || []) {
+    const processedMsg = { ...msg };
 
-      // Handle images
-      if (msg.type === 'image') {
-        processedMsg.url =
-          msg.image ||
-          msg.file ||
-          msg.file_content ||
-          msg.file_url ||
-          (msg.content?.startsWith('data:image') ? msg.content : null);
+    // Handle images
+    if (msg.type === 'image') {
+      processedMsg.url =
+        msg.image ||
+        msg.file ||
+        msg.file_content ||
+        msg.file_url ||
+        (msg.content?.startsWith('data:image') ? msg.content : null);
 
-        processedMsg.width = msg.width || 200;
-        processedMsg.height = msg.height || 150;
+      processedMsg.width = msg.width || 200;
+      processedMsg.height = msg.height || 150;
 
-        if (!processedMsg.url) {
-          processedMsg.type = 'text';
-          processedMsg.text = '[Image not available]';
-        }
+      if (!processedMsg.url) {
+        processedMsg.type = 'text';
+        processedMsg.text = '[Image not available]';
       }
+    }
 
-      // Handle files
-      if (msg.type === 'file') {
-        processedMsg.url =
-          msg.file ||
-          msg.file_content ||
-          msg.file_url ||
-          (msg.content?.startsWith('data:') ? msg.content : null);
+    // Handle files
+    if (msg.type === 'file') {
+      processedMsg.url =
+        msg.file ||
+        msg.file_content ||
+        msg.file_url ||
+        (msg.content?.startsWith('data:') ? msg.content : null);
+    }
+
+    // Handle message_with_options
+    if (msg.type === 'message_with_options') {
+      processedMsg.options = msg.options || 
+                            msg.choices || 
+                            msg.buttons || 
+                            (msg.content && typeof msg.content === 'object' ? msg.content.options : []) || 
+                            [];
+      
+      if (!Array.isArray(processedMsg.options)) {
+        processedMsg.options = [processedMsg.options];
       }
-
-      // FIXED: Better handling of message_with_options
-      if (msg.type === 'message_with_options') {
-        // Extract options from various possible backend formats
-        processedMsg.options = msg.options || 
-                              msg.choices || 
-                              msg.buttons || 
-                              (msg.content && typeof msg.content === 'object' ? msg.content.options : []) || 
-                              [];
-        
-        // Ensure options is an array
-        if (!Array.isArray(processedMsg.options)) {
-          processedMsg.options = [processedMsg.options];
-        }
-        
-        // Use the display style from backend, fallback to vertical-buttons
-        processedMsg.optionsDisplayStyle = msg.options_display_style || 
-                                          msg.optionsDisplayStyle || 
-                                          msg.display_style || 
-                                          'vertical-buttons';
-        
-        // Ensure we have text content
-        if (!processedMsg.text && msg.content && typeof msg.content === 'object') {
-          processedMsg.text = msg.content.text || msg.content.message || 'Please choose an option:';
-        } else if (!processedMsg.text) {
-          processedMsg.text = 'Please choose an option:';
-        }
+      
+      processedMsg.optionsDisplayStyle = msg.options_display_style || 
+                                        msg.optionsDisplayStyle || 
+                                        msg.display_style || 
+                                        'vertical-buttons';
+      
+      if (!processedMsg.text && msg.content && typeof msg.content === 'object') {
+        processedMsg.text = msg.content.text || msg.content.message || 'Please choose an option:';
+      } else if (!processedMsg.text) {
+        processedMsg.text = 'Please choose an option:';
       }
+    }
 
-      setTranscript((prev) => {
-        const messageId = processedMsg.url 
-          ? `media-${processedMsg.url}-${Date.now()}-${Math.random()}`
-          : `text-${processedMsg.text}-${Date.now()}-${Math.random()}`;
+    setTranscript((prev) => {
+      const messageId = processedMsg.url 
+        ? `media-${processedMsg.url}-${Date.now()}-${Math.random()}`
+        : `text-${processedMsg.text}-${Date.now()}-${Math.random()}`;
 
-        // FIXED: Less restrictive duplicate checking for options
-        const recentMessages = prev.slice(-10);
-        const exists = recentMessages.some(
-          (m) => m.type === processedMsg.type && 
-                 m.text === processedMsg.text && 
-                 JSON.stringify(m.options) === JSON.stringify(processedMsg.options)
-        );
-        
-        if (exists) return prev;
-        return [
-          ...prev,
-          { 
-            ...processedMsg, 
-            id: messageId,
-            timestamp: processedMsg.timestamp || new Date().toISOString() 
-          },
-        ];
+      // ✅ Improved duplicate check
+      const recentMessages = prev.slice(-10);
+      const exists = recentMessages.some((m) => {
+        if (processedMsg.type === 'image') {
+          return m.type === 'image' && m.url === processedMsg.url;
+        }
+        if (processedMsg.type === 'file') {
+          return m.type === 'file' && m.url === processedMsg.url;
+        }
+        if (processedMsg.type === 'message_with_options') {
+          return (
+            m.type === 'message_with_options' &&
+            m.text === processedMsg.text &&
+            JSON.stringify(m.options) === JSON.stringify(processedMsg.options)
+          );
+        }
+        return m.type === processedMsg.type && m.text === processedMsg.text;
       });
 
-      await delay(400);
-    }
+      if (exists) return prev;
+
+      return [
+        ...prev,
+        { 
+          ...processedMsg, 
+          id: messageId,
+          timestamp: processedMsg.timestamp || new Date().toISOString() 
+        },
+      ];
+    });
+
+    await delay(400);
+  }
   };
+
 
   // Handle option selection
   const handleOptionSelect = async (option) => {
