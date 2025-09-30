@@ -172,9 +172,8 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: '100vh',
+    height: '60vh',
     padding: '20px',
-    backgroundColor: '#f5f7fa',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif",
   },
   containerMobile: {
