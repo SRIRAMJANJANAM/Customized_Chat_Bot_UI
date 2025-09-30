@@ -3,7 +3,6 @@ import { addEdge, useEdgesState, useNodesState } from 'reactflow';
 import { API } from '../api';
 
 export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => {
-  // State management
   const [mainNodes, setMainNodes, onMainNodesChange] = useNodesState([]);
   const [mainEdges, setMainEdges, onMainEdgesChange] = useEdgesState([]);
   const [pathNodes, setPathNodes, onPathNodesChange] = useNodesState([]);
@@ -28,7 +27,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
   const [editPathName, setEditPathName] = useState('');
   const [editPathDescription, setEditPathDescription] = useState('');
 
-  // Data conversion
   const convertToFlowFormat = (data, isPath = false) => {
     const nds = data.nodes.map((n) => {
       const frontendNodeType = {
@@ -118,7 +116,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     return { nds, eds };
   };
 
-  // Data loading
   const loadMainGraph = async () => {
     setLoading(true);
     try {
@@ -195,7 +192,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     }
   };
 
-  // Node operations
   const onConnect = useCallback(
     (params) => {
       const currentEdges = activePath ? pathEdges : mainEdges;
@@ -461,7 +457,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     }
   };
 
-  // Path operations
   const createPath = async () => {
     if (!newPathName.trim()) {
       alert('Please enter a path name');
@@ -562,7 +557,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     loadMainGraph();
   };
 
-  // Save operations
   const savePathGraph = async () => {
     if (!activePath) return;
     setLoading(true);
@@ -708,9 +702,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     }
   };
 
-  // Return all state and methods
   return {
-    // State
     mainNodes, setMainNodes, onMainNodesChange,
     mainEdges, setMainEdges, onMainEdgesChange,
     pathNodes, setPathNodes, onPathNodesChange,
@@ -734,8 +726,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     editingPath, setEditingPath,
     editPathName, setEditPathName,
     editPathDescription, setEditPathDescription,
-    
-    // Methods
+
     convertToFlowFormat,
     loadMainGraph,
     loadPathGraph,
@@ -761,4 +752,4 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     savePathGraph,
     saveGraph
   };
-};
+};  
