@@ -323,82 +323,93 @@ export default function TestModal({ botId, onClose }) {
   };
 
   const handleFormSubmit = async (e) => {
-    e.preventDefault();
-    if (running) return;
+  e.preventDefault();
+  if (running) return;
 
-    setRunning(true);
+  setRunning(true);
 
-    try {
-      // **FIXED: Better form data processing**
-      let processedMessage = message;
-      Object.keys(formData).forEach(attribute => {
-        const value = formData[attribute];
-        // Handle both {{attribute}} and [attribute] formats
-        const placeholders = [`{{${attribute}}}`, `[${attribute}]`];
-        placeholders.forEach(placeholder => {
-          processedMessage = processedMessage.replace(new RegExp(placeholder, 'g'), value);
-        });
+  try {
+    // **FIXED: Only show "Form submitted" without duplicate data**
+    const userMessage = "Form submitted";
+
+    // Add clean user message
+    setTranscript((prev) => [
+      ...prev,
+      { 
+        from: 'user', 
+        type: 'text', 
+        text: userMessage, 
+        timestamp: new Date().toISOString(),
+        id: `user-form-${Date.now()}-${Math.random()}`,
+        form_data: formData
+      },
+    ]);
+
+    // Send form data to backend
+    const payload = {
+      user_inputs: { 
+        input: userMessage,
+        form_data: formData 
+      }, 
+      current_node_id: currentFormNodeId || currentNodeId,
+      active_path_id: activePathId,
+      session_id: sessionId
+    };
+
+    console.log('Sending form data:', payload);
+
+    const { data } = await API.post(`/chatbots/${botId}/run/`, payload);
+
+    // **FIXED: Process bot responses to replace placeholders with actual values**
+    const processPlaceholders = (messages) => {
+      return messages.map(msg => {
+        if (msg.text && typeof msg.text === 'string') {
+          let processedText = msg.text;
+          // Replace all {{attribute}} placeholders with actual values
+          Object.keys(formData).forEach(attribute => {
+            const placeholder = `{{${attribute}}}`;
+            const value = formData[attribute];
+            processedText = processedText.replace(new RegExp(placeholder, 'g'), value);
+          });
+          return { ...msg, text: processedText };
+        }
+        return msg;
       });
+    };
 
-      // Add user message with form data
-      setTranscript((prev) => [
-        ...prev,
-        { 
-          from: 'user', 
-          type: 'text', 
-          text: processedMessage || "Form submitted", 
-          timestamp: new Date().toISOString(),
-          id: `user-form-${Date.now()}-${Math.random()}`,
-          form_data: formData
-        },
-      ]);
-
-      // **FIXED: Send form data in proper format**
-      const payload = {
-        user_inputs: { 
-          input: processedMessage || "Form submitted",
-          form_data: formData 
-        }, 
-        current_node_id: currentFormNodeId || currentNodeId,
-        active_path_id: activePathId,
-        session_id: sessionId
-      };
-
-      console.log('Sending form data:', payload);
-
-      const { data } = await API.post(`/chatbots/${botId}/run/`, payload);
-
-      if (data?.message) {
-        await addBotMessagesWithDelay(data.message.transcript || []);
-        setCurrentNodeId(data.message.current_node_id ?? null);
-        setActivePathId(data.active_path_id ?? null);
-      } else if (data?.transcript) {
-        await addBotMessagesWithDelay(data.transcript);
-        setCurrentNodeId(data.current_node_id ?? null);
-        setActivePathId(data.active_path_id ?? null);
-      }
-
-      // Reset form
-      setShowForm(false);
-      setFormFields([]);
-      setFormData({});
-      setMessage('');
-
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      setTranscript((prev) => [
-        ...prev,
-        { 
-          from: 'bot', 
-          type: 'text', 
-          text: 'Error occurred while processing your form', 
-          timestamp: new Date().toISOString(),
-          id: `error-${Date.now()}-${Math.random()}`
-        },
-      ]);
-    } finally {
-      setRunning(false);
+    if (data?.message?.transcript) {
+      const processedTranscript = processPlaceholders(data.message.transcript);
+      await addBotMessagesWithDelay(processedTranscript);
+      setCurrentNodeId(data.message.current_node_id ?? null);
+      setActivePathId(data.active_path_id ?? null);
+    } else if (data?.transcript) {
+      const processedTranscript = processPlaceholders(data.transcript);
+      await addBotMessagesWithDelay(processedTranscript);
+      setCurrentNodeId(data.current_node_id ?? null);
+      setActivePathId(data.active_path_id ?? null);
     }
+
+    // Reset form
+    setShowForm(false);
+    setFormFields([]);
+    setFormData({});
+    setMessage('');
+
+  } catch (error) {
+    console.error('Error submitting form:', error);
+    setTranscript((prev) => [
+      ...prev,
+      { 
+        from: 'bot', 
+        type: 'text', 
+        text: 'Error occurred while processing your form', 
+        timestamp: new Date().toISOString(),
+        id: `error-${Date.now()}-${Math.random()}`
+      },
+    ]);
+  } finally {
+    setRunning(false);
+  }
   };
 
   const handleFormInputChange = (fieldName, value) => {
@@ -739,7 +750,6 @@ export default function TestModal({ botId, onClose }) {
               <form onSubmit={handleFormSubmit} className="chat-form">
                 <div className="form-header">
                   <h4>📋 Please fill out the form:</h4>
-                  
                 </div>
                 <div className="form-fields">
                   {formFields.map((field, index) => {
@@ -759,7 +769,6 @@ export default function TestModal({ botId, onClose }) {
                   })}
                 </div>
                 <div className="form-actions">
-                  
                   <button 
                     type="submit" 
                     disabled={running}
