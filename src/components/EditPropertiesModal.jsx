@@ -15,8 +15,6 @@ const EditPropertiesModal = ({
   onClose
 }) => {
   if (!selected) return null;
-
-  // Function to add a new form field
   const addFormField = () => {
     const newField = {
       id: Date.now().toString(),
@@ -30,22 +28,16 @@ const EditPropertiesModal = ({
     const currentFields = selected.data.formFields || [];
     updateSelected('formFields', [...currentFields, newField]);
   };
-
-  // Function to update a form field
   const updateFormField = (fieldId, key, value) => {
     const updatedFields = selected.data.formFields?.map(field => 
       field.id === fieldId ? { ...field, [key]: value } : field
     ) || [];
     updateSelected('formFields', updatedFields);
   };
-
-  // Function to remove a form field
   const removeFormField = (fieldId) => {
     const updatedFields = selected.data.formFields?.filter(field => field.id !== fieldId) || [];
     updateSelected('formFields', updatedFields);
   };
-
-  // Function to update validation rules
   const updateValidation = (fieldId, validationKey, value) => {
     const updatedFields = selected.data.formFields?.map(field => {
       if (field.id === fieldId) {
@@ -61,16 +53,12 @@ const EditPropertiesModal = ({
     }) || [];
     updateSelected('formFields', updatedFields);
   };
-
-  // Generate attribute name from label
   const generateAttributeName = (label) => {
     return label
       .toLowerCase()
       .replace(/[^a-zA-Z0-9 ]/g, '')
       .replace(/\s+/g, '_');
   };
-
-  // Render field-specific validation options
   const renderValidationOptions = (field) => {
     switch (field.type) {
       case 'text':
@@ -239,16 +227,12 @@ const EditPropertiesModal = ({
         return null;
     }
   };
-
-  // Get available attribute names for use in content
   const getAvailableAttributes = () => {
     return selected.data.formFields?.map(field => ({
       name: field.attributeName,
       label: field.label
     })) || [];
   };
-
-  // Insert attribute placeholder into content
   const insertAttribute = (attributeName) => {
     const currentContent = selected.data.content || '';
     const newContent = currentContent + ` {{${attributeName}}}`;
@@ -303,7 +287,7 @@ const EditPropertiesModal = ({
             )}
           </div>
 
-          {/* Google Sheet Integration with Form Builder */}
+          {/* Google Sheet Integration*/}
           {selected._ntype === 'google_sheet' && (
             <>
               <label className={styles.label}>Google Sheet Configuration</label>
@@ -351,7 +335,6 @@ const EditPropertiesModal = ({
                           onChange={(e) => {
                             const newLabel = e.target.value;
                             updateFormField(field.id, 'label', newLabel);
-                            // Auto-generate attribute name if empty
                             if (!field.attributeName) {
                               updateFormField(field.id, 'attributeName', generateAttributeName(newLabel));
                             }

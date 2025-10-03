@@ -34,8 +34,6 @@ export default function TestModal({ botId, onClose }) {
   useEffect(() => {
     if (transcript.length > 0) {
       const lastMessage = transcript[transcript.length - 1];
-      
-      // Check for file request
       const isFileRequest = lastMessage.from === 'bot' && 
         (lastMessage.type === 'file_request' || 
          (lastMessage.text && (
@@ -47,16 +45,12 @@ export default function TestModal({ botId, onClose }) {
          )));
       
       setFileRequested(isFileRequest);
-      
-      // Check for message with options
       const isMessageWithOptions = lastMessage.from === 'bot' && 
         lastMessage.type === 'message_with_options';
       
       if (isMessageWithOptions) {
         setSelectedOption(null);
       }
-
-      // **FIXED: Enhanced form detection logic**
       const hasFormFields = lastMessage.form_fields && lastMessage.form_fields.length > 0;
       const isFormNode = lastMessage.node_type === 'google_sheet' || lastMessage.type === 'form';
       const hasFormInContent = lastMessage.content && lastMessage.content.form_fields;
@@ -76,8 +70,6 @@ export default function TestModal({ botId, onClose }) {
         setFormFields(fields);
         setShowForm(true);
         setCurrentFormNodeId(lastMessage.node_id || currentNodeId);
-        
-        // Initialize form data
         const initialFormData = {};
         fields.forEach(field => {
           initialFormData[field.attributeName || field.attribute_name || field.name] = '';
@@ -153,8 +145,6 @@ export default function TestModal({ botId, onClose }) {
   const addBotMessagesWithDelay = async (messages) => {
     for (const msg of messages || []) {
       const processedMsg = { ...msg };
-      
-      // Process image messages
       if (msg.type === 'image') {
         processedMsg.url =
           msg.image ||
@@ -171,8 +161,6 @@ export default function TestModal({ botId, onClose }) {
           processedMsg.text = '[Image not available]';
         }
       }
-      
-      // Process file messages
       if (msg.type === 'file') {
         processedMsg.url =
           msg.file ||
@@ -180,8 +168,6 @@ export default function TestModal({ botId, onClose }) {
           msg.file_url ||
           (msg.content?.startsWith('data:') ? msg.content : null);
       }
-      
-      // Process message with options
       if (msg.type === 'message_with_options') {
         processedMsg.options = msg.options || 
                               msg.choices || 
@@ -204,16 +190,13 @@ export default function TestModal({ botId, onClose }) {
           processedMsg.text = 'Please choose an option:';
         }
       }
-
-      // **FIXED: Enhanced form message processing**
       if (msg.node_type === 'google_sheet' || msg.type === 'form' || msg.form_fields) {
         processedMsg.form_fields = msg.form_fields || 
                                   msg.content?.form_fields || 
                                   msg.data?.form_fields || 
                                   [];
         processedMsg.node_id = msg.node_id || currentNodeId;
-        processedMsg.type = 'form'; // Force type to form for consistent handling
-        
+        processedMsg.type = 'form'; 
         console.log('Processed form message:', processedMsg);
       }
 
@@ -329,10 +312,7 @@ export default function TestModal({ botId, onClose }) {
   setRunning(true);
 
   try {
-    // **FIXED: Only show "Form submitted" without duplicate data**
     const userMessage = "Form submitted";
-
-    // Add clean user message
     setTranscript((prev) => [
       ...prev,
       { 
@@ -344,8 +324,6 @@ export default function TestModal({ botId, onClose }) {
         form_data: formData
       },
     ]);
-
-    // Send form data to backend
     const payload = {
       user_inputs: { 
         input: userMessage,
@@ -359,13 +337,10 @@ export default function TestModal({ botId, onClose }) {
     console.log('Sending form data:', payload);
 
     const { data } = await API.post(`/chatbots/${botId}/run/`, payload);
-
-    // **FIXED: Process bot responses to replace placeholders with actual values**
     const processPlaceholders = (messages) => {
       return messages.map(msg => {
         if (msg.text && typeof msg.text === 'string') {
           let processedText = msg.text;
-          // Replace all {{attribute}} placeholders with actual values
           Object.keys(formData).forEach(attribute => {
             const placeholder = `{{${attribute}}}`;
             const value = formData[attribute];
@@ -388,8 +363,6 @@ export default function TestModal({ botId, onClose }) {
       setCurrentNodeId(data.current_node_id ?? null);
       setActivePathId(data.active_path_id ?? null);
     }
-
-    // Reset form
     setShowForm(false);
     setFormFields([]);
     setFormData({});
@@ -744,7 +717,7 @@ export default function TestModal({ botId, onClose }) {
             ))}
           </div>
 
-          {/* **FIXED: Enhanced Google Sheet Form */}
+          {/*Enhanced Google Sheet Form */}
           {showForm && formFields.length > 0 && (
             <div className="form-container">
               <form onSubmit={handleFormSubmit} className="chat-form">

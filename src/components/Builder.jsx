@@ -14,8 +14,6 @@ const genId = () => String(++idCounter);
 export default function Builder({ botId }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const flowWrapperRef = useRef(null);
-  
-  // Add reloading state
   const [reloading, setReloading] = useState(false);
   
   const {
@@ -71,7 +69,6 @@ export default function Builder({ botId }) {
     saveGraph
   } = useBuilderLogic(botId, searchParams, setSearchParams, genId);
 
-  // Filter paths when search term changes
   useEffect(() => {
     if (!pathSearchTerm.trim()) {
       setFilteredPaths(paths);
@@ -85,10 +82,8 @@ export default function Builder({ botId }) {
     }
   }, [paths, pathSearchTerm, setFilteredPaths]);
 
-  // Close path menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      // Only close if clicking outside of menu buttons
       if (!e.target.closest(`.${styles.menuButton}`) && !e.target.closest(`.${styles.menuDropdown}`)) {
         setPathMenuOpen(null);
       }
@@ -98,7 +93,6 @@ export default function Builder({ botId }) {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [setPathMenuOpen]);
 
-  // Enhanced reload handler with animation
   const handleReload = async () => {
     setReloading(true);
     
@@ -117,7 +111,6 @@ export default function Builder({ botId }) {
       console.error('Error reloading:', error);
       alert('Failed to reload data. Please try again.');
     } finally {
-      // Keep the animation visible for at least 2 seconds
       setTimeout(() => {
         setReloading(false);
       }, 2000);
@@ -148,9 +141,7 @@ export default function Builder({ botId }) {
     };
 
     initialize();
-  }, [botId, searchParams]); // Removed dependencies that might cause infinite loops
-
-  // Update node labels when relevant data changes
+  }, [botId, searchParams]);
   useEffect(() => {
     if (!selected) return;
     
@@ -167,7 +158,6 @@ export default function Builder({ botId }) {
         : 'Message with Options (no options set)';
     } 
     else if (selected._ntype === 'google_sheet') {
-      // **IMPROVED: Better Google Sheet node labeling**
       if (selected.data.formFields && selected.data.formFields.length > 0) {
         newLabel = `Form: ${selected.data.formFields.length} field(s)`;
       } else if (selected.data.googleSheetUrl) {
@@ -176,14 +166,10 @@ export default function Builder({ botId }) {
         newLabel = 'Google Sheet Form';
       }
     }
-
-    // Only update if label actually changed
     if (selected.data.label !== newLabel) {
       updateSelected('label', newLabel);
     }
   }, [selected, updateSelected]);
-
-  // Close context menu when clicking elsewhere
   useEffect(() => {
     const handleClick = () => {
       if (contextMenu) {
@@ -195,10 +181,8 @@ export default function Builder({ botId }) {
     return () => document.removeEventListener('click', handleClick);
   }, [contextMenu, setContextMenu]);
 
-  // Add keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Delete key for selected node
       if ((e.key === 'Delete' || e.key === 'Backspace') && selected && !editModalOpen) {
         e.preventDefault();
         const label = selected.data.label || 'Node';
@@ -206,8 +190,6 @@ export default function Builder({ botId }) {
           deleteNode(selected.id);
         }
       }
-      
-      // Escape key to close modals
       if (e.key === 'Escape') {
         if (editModalOpen) setEditModalOpen(false);
         if (addNodePopupOpen) setAddNodePopupOpen(false);
@@ -215,8 +197,6 @@ export default function Builder({ botId }) {
         if (renameModalOpen) setRenameModalOpen(false);
         setContextMenu(null);
       }
-
-      // **ADDED: Ctrl+S to save**
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         if (activePath) {
@@ -246,7 +226,6 @@ export default function Builder({ botId }) {
     saveGraph
   ]);
 
-  // **ADDED: Auto-save indicator**
   const [lastSaved, setLastSaved] = useState(null);
 
   const handleSave = async () => {
@@ -477,13 +456,6 @@ export default function Builder({ botId }) {
           <button onClick={() => setPathPanelOpen(!pathPanelOpen)} disabled={reloading} className={styles.pathPanelButton}>
             {pathPanelOpen ? 'Hide Paths' : 'Show Paths'}
           </button>
-          
-          {/* **ADDED: Last saved indicator */}
-          {lastSaved && (
-            <span className={styles.lastSaved}>
-              Last saved: {lastSaved}
-            </span>
-          )}
         </div>
         
         {/* Path Panel */}

@@ -58,16 +58,12 @@ export default function NodeSidebar({ addNode }) {
       ]
     }
   ];
-
-  // Toggle category expansion
   const toggleCategory = (categoryName) => {
     setExpandedCategories(prev => ({
       ...prev,
       [categoryName]: !prev[categoryName]
     }));
   };
-
-  // Expand all categories
   const expandAll = () => {
     const allExpanded = {};
     nodeCategories.forEach(category => {
@@ -75,13 +71,9 @@ export default function NodeSidebar({ addNode }) {
     });
     setExpandedCategories(allExpanded);
   };
-
-  // Collapse all categories
   const collapseAll = () => {
     setExpandedCategories({});
   };
-
-  // Filter items based on search term across all categories
   const filteredCategories = nodeCategories.map(category => ({
     ...category,
     items: category.items.filter(item =>
@@ -97,8 +89,6 @@ export default function NodeSidebar({ addNode }) {
     item.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Auto-expand categories when searching
   React.useEffect(() => {
     if (searchTerm) {
       const expanded = {};
@@ -147,7 +137,6 @@ export default function NodeSidebar({ addNode }) {
 
       <div style={styles.gridContainer}>
         {searchTerm ? (
-          // Show flat list when searching
           filteredAllItems.length > 0 ? (
             filteredAllItems.map((n) => (
               <div
@@ -167,7 +156,6 @@ export default function NodeSidebar({ addNode }) {
             </div>
           )
         ) : (
-          // Show categorized view when not searching
           filteredCategories.map((category, index) => (
             <div key={category.name} style={styles.categorySection}>
               <div 

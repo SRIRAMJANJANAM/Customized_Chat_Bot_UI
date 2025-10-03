@@ -47,8 +47,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         : (n.node_type === 'trigger_path'
             ? `Trigger Path: ${n.triggered_path?.name || 'None'}`
             : n.label || `${n.node_type} ${n.id}`);
-
-      // Enhanced form field conversion
       const formFields = (n.form_fields || []).map(field => {
         const fieldId = field.id || `field-${Date.now()}-${Math.random()}`;
         const attributeName = field.attribute_name || field.attributeName || field.name || '';
@@ -106,7 +104,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
           googleSheetHeaders: n.google_sheet_headers || null,
           googleSheetDataMapping: n.google_sheet_data_mapping || null,
           formFields: formFields,
-          // FIXED: Only show form title if content is different
           formTitle: n.form_title || (n.content ? '' : 'Please fill out the form below:'),
           formDescription: n.form_description || '',
           submitButtonText: n.submit_button_text || 'Submit Form'
@@ -266,8 +263,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     }[type] || type;
 
     const triggeredPath = activePath ? null : null;
-
-    // FIXED: For google_sheet nodes, set content to empty to avoid duplication
     const defaultContent = {
       greeting: 'Welcome! What topic do you need help with?',
       user_input: 'Type your answer…',
@@ -278,7 +273,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
       image: '',
       file: '',
       trigger_path: 'Select a path to trigger...',
-      google_sheet: '', // CHANGED: Empty content to avoid duplication
+      google_sheet: '', 
     }[type] || '';
 
     const defaultWidth = type === 'image' ? 200 : null;
@@ -288,8 +283,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     const position = isFirstNode
       ? { x: window.innerWidth / 2 - 100, y: 100 }
       : { x: 120 + Math.random() * 320, y: 80 + Math.random() * 280 };
-
-    // Enhanced default form fields for google_sheet node
     const defaultFormFields = type === 'google_sheet' ? [
       {
         id: genId(),
@@ -342,7 +335,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         googleSheetHeaders: null,
         googleSheetDataMapping: null,
         formFields: defaultFormFields,
-        // FIXED: Only show form title, not duplicate content
         formTitle: type === 'google_sheet' ? 'Please fill out the form below:' : '',
         formDescription: '',
         submitButtonText: 'Submit Form'
@@ -648,7 +640,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
               google_sheet_name: n.data.googleSheetName || null,
               google_sheet_headers: n.data.googleSheetHeaders || null,
               google_sheet_data_mapping: n.data.googleSheetDataMapping || null,
-              // Enhanced form field serialization
               form_fields: n.data.formFields?.map(field => ({
                 id: field.id,
                 label: field.label,
@@ -747,7 +738,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
               google_sheet_name: n.data.googleSheetName || null,
               google_sheet_headers: n.data.googleSheetHeaders || null,
               google_sheet_data_mapping: n.data.googleSheetDataMapping || null,
-              // Enhanced form field serialization
               form_fields: n.data.formFields?.map(field => ({
                 id: field.id,
                 label: field.label,
