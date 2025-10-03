@@ -15,6 +15,9 @@ export default function Builder({ botId }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const flowWrapperRef = useRef(null);
   
+  // Add reloading state
+  const [reloading, setReloading] = useState(false);
+  
   const {
     // State
     mainNodes, setMainNodes, onMainNodesChange,
@@ -80,23 +83,28 @@ export default function Builder({ botId }) {
       );
       setFilteredPaths(filtered);
     }
-  }, [paths, pathSearchTerm]);
+  }, [paths, pathSearchTerm, setFilteredPaths]);
 
   // Close path menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => {
-      setPathMenuOpen(null);
+    const handleClickOutside = (e) => {
+      // Only close if clicking outside of menu buttons
+      if (!e.target.closest(`.${styles.menuButton}`) && !e.target.closest(`.${styles.menuDropdown}`)) {
+        setPathMenuOpen(null);
+      }
     };
+    
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
+  }, [setPathMenuOpen]);
 
-  // Load data when component mounts or URL changes
-  useEffect(() => {
-    const pathIdFromUrl = searchParams.get('pathId');
-
-    const initialize = async () => {
-      await loadPaths();
+  // Enhanced reload handler with animation
+  const handleReload = async () => {
+    setReloading(true);
+    
+    try {
+      const pathIdFromUrl = searchParams.get('pathId');
+      
       if (pathIdFromUrl) {
         await loadPathGraph(pathIdFromUrl);
       } else {
@@ -105,39 +113,154 @@ export default function Builder({ botId }) {
         setPathEdges([]);
         setActivePath(null);
       }
+    } catch (error) {
+      console.error('Error reloading:', error);
+      alert('Failed to reload data. Please try again.');
+    } finally {
+      // Keep the animation visible for at least 2 seconds
+      setTimeout(() => {
+        setReloading(false);
+      }, 2000);
+    }
+  };
+  
+  useEffect(() => {
+    const pathIdFromUrl = searchParams.get('pathId');
+
+    const initialize = async () => {
+      try {
+        setLoading(true);
+        await loadPaths();
+        if (pathIdFromUrl) {
+          await loadPathGraph(pathIdFromUrl);
+        } else {
+          await loadMainGraph();
+          setPathNodes([]);
+          setPathEdges([]);
+          setActivePath(null);
+        }
+      } catch (error) {
+        console.error('Error initializing builder:', error);
+        alert('Failed to load chatbot data. Please refresh the page.');
+      } finally {
+        setLoading(false);
+      }
     };
 
     initialize();
-  }, [botId, searchParams]);
+  }, [botId, searchParams]); // Removed dependencies that might cause infinite loops
 
   // Update node labels when relevant data changes
   useEffect(() => {
     if (!selected) return;
+    
+    let newLabel = selected.data.label;
+    
     if (selected._ntype === 'trigger_path') {
-      const newLabel = selected.data.triggeredPath
+      newLabel = selected.data.triggeredPath
         ? `Trigger: ${selected.data.triggeredPath.name}`
         : 'Trigger: None';
-      if (selected.data.label !== newLabel) {
-        updateSelected('label', newLabel);
-      }
-    }
-    if (selected._ntype === 'message_with_options') {
-      const newLabel = selected.data.options && selected.data.options.length > 0
+    } 
+    else if (selected._ntype === 'message_with_options') {
+      newLabel = selected.data.options && selected.data.options.length > 0
         ? `Options: ${selected.data.options.join(', ')}`
         : 'Message with Options (no options set)';
-      if (selected.data.label !== newLabel) {
-        updateSelected('label', newLabel);
+    } 
+    else if (selected._ntype === 'google_sheet') {
+      // **IMPROVED: Better Google Sheet node labeling**
+      if (selected.data.formFields && selected.data.formFields.length > 0) {
+        newLabel = `Form: ${selected.data.formFields.length} field(s)`;
+      } else if (selected.data.googleSheetUrl) {
+        newLabel = `Google Sheet: ${selected.data.googleSheetUrl.substring(0, 30)}...`;
+      } else {
+        newLabel = 'Google Sheet Form';
       }
     }
-    if (selected._ntype === 'google_sheet') {
-      const newLabel = selected.data.googleSheetUrl
-        ? `Google Sheet: ${selected.data.googleSheetUrl.substring(0, 30)}...`
-        : 'Send to Google Sheet';
-      if (selected.data.label !== newLabel) {
-        updateSelected('label', newLabel);
-      }
+
+    // Only update if label actually changed
+    if (selected.data.label !== newLabel) {
+      updateSelected('label', newLabel);
     }
-  }, [selected?.data.triggeredPath, selected?.data.options, selected?.data.googleSheetUrl]);
+  }, [selected, updateSelected]);
+
+  // Close context menu when clicking elsewhere
+  useEffect(() => {
+    const handleClick = () => {
+      if (contextMenu) {
+        setContextMenu(null);
+      }
+    };
+    
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [contextMenu, setContextMenu]);
+
+  // Add keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Delete key for selected node
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selected && !editModalOpen) {
+        e.preventDefault();
+        const label = selected.data.label || 'Node';
+        if (window.confirm(`Delete node "${label}"?`)) {
+          deleteNode(selected.id);
+        }
+      }
+      
+      // Escape key to close modals
+      if (e.key === 'Escape') {
+        if (editModalOpen) setEditModalOpen(false);
+        if (addNodePopupOpen) setAddNodePopupOpen(false);
+        if (createPathModalOpen) setCreatePathModalOpen(false);
+        if (renameModalOpen) setRenameModalOpen(false);
+        setContextMenu(null);
+      }
+
+      // **ADDED: Ctrl+S to save**
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (activePath) {
+          savePathGraph();
+        } else {
+          saveGraph();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [
+    selected, 
+    editModalOpen, 
+    addNodePopupOpen, 
+    createPathModalOpen, 
+    renameModalOpen, 
+    activePath,
+    deleteNode, 
+    setEditModalOpen, 
+    setAddNodePopupOpen, 
+    setCreatePathModalOpen, 
+    setRenameModalOpen, 
+    setContextMenu,
+    savePathGraph,
+    saveGraph
+  ]);
+
+  // **ADDED: Auto-save indicator**
+  const [lastSaved, setLastSaved] = useState(null);
+
+  const handleSave = async () => {
+    try {
+      if (activePath) {
+        await savePathGraph();
+      } else {
+        await saveGraph();
+      }
+      setLastSaved(new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error('Save failed:', error);
+    }
+  };
 
   return (
     <>
@@ -154,7 +277,7 @@ export default function Builder({ botId }) {
             />
             <button
               onClick={() => setAddNodePopupOpen(false)}
-              style={{ marginTop: '10px', background: 'black', color: 'gold', padding: '4px', borderRadius: '10px' }}
+              className={styles.closeButton}
             >
               Close
             </button>
@@ -170,25 +293,42 @@ export default function Builder({ botId }) {
               <h3 className={styles.modalTitle}>Create New Path</h3>
               <button onClick={() => setCreatePathModalOpen(false)} className={styles.closeButton}>✕</button>
             </div>
-            <section style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <section className={styles.modalContent}>
               <label className={styles.label}>Path Name</label>
               <input
                 value={newPathName}
                 onChange={(e) => setNewPathName(e.target.value)}
                 className={styles.input}
                 placeholder="Enter path name"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newPathName.trim()) {
+                    createPath();
+                  }
+                }}
               />
               <label className={styles.label}>Description (Optional)</label>
               <textarea
                 value={newPathDescription}
                 onChange={(e) => setNewPathDescription(e.target.value)}
-                className={styles.input}
+                className={styles.textarea}
                 placeholder="Enter path description"
                 rows={3}
               />
               <div className={styles.actionButtons}>
-                <button onClick={createPath} className={`${styles.actionButton} ${styles.saveBtn}`}>Create Path</button>
-                <button onClick={() => setCreatePathModalOpen(false)} className={`${styles.actionButton} ${styles.cancelBtn}`}>Cancel</button>
+                <button 
+                  onClick={createPath} 
+                  disabled={!newPathName.trim()}
+                  className={`${styles.actionButton} ${styles.saveBtn}`}
+                >
+                  Create Path
+                </button>
+                <button 
+                  onClick={() => setCreatePathModalOpen(false)} 
+                  className={`${styles.actionButton} ${styles.cancelBtn}`}
+                >
+                  Cancel
+                </button>
               </div>
             </section>
           </div>
@@ -203,25 +343,42 @@ export default function Builder({ botId }) {
               <h3 className={styles.modalTitle}>Rename Path</h3>
               <button onClick={() => setRenameModalOpen(false)} className={styles.closeButton}>✕</button>
             </div>
-            <section style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <section className={styles.modalContent}>
               <label className={styles.label}>Path Name</label>
               <input
                 value={editPathName}
                 onChange={(e) => setEditPathName(e.target.value)}
                 className={styles.input}
                 placeholder="Enter path name"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && editPathName.trim()) {
+                    renamePath(editingPath.id, editPathName, editPathDescription);
+                  }
+                }}
               />
               <label className={styles.label}>Description (Optional)</label>
               <textarea
                 value={editPathDescription}
                 onChange={(e) => setEditPathDescription(e.target.value)}
-                className={styles.input}
+                className={styles.textarea}
                 placeholder="Enter path description"
                 rows={3}
               />
               <div className={styles.actionButtons}>
-                <button onClick={() => renamePath(editingPath.id, editPathName, editPathDescription)} className={`${styles.actionButton} ${styles.saveBtn}`}>Save Changes</button>
-                <button onClick={() => setRenameModalOpen(false)} className={`${styles.actionButton} ${styles.cancelBtn}`}>Cancel</button>
+                <button 
+                  onClick={() => renamePath(editingPath.id, editPathName, editPathDescription)} 
+                  disabled={!editPathName.trim()}
+                  className={`${styles.actionButton} ${styles.saveBtn}`}
+                >
+                  Save Changes
+                </button>
+                <button 
+                  onClick={() => setRenameModalOpen(false)} 
+                  className={`${styles.actionButton} ${styles.cancelBtn}`}
+                >
+                  Cancel
+                </button>
               </div>
             </section>
           </div>
@@ -230,12 +387,21 @@ export default function Builder({ botId }) {
       
       {/* Context menu */}
       {contextMenu && (
-        <div className={styles.contextMenu} style={{ top: contextMenu.top, left: contextMenu.left }}>
+        <div 
+          className={styles.contextMenu} 
+          style={{ top: contextMenu.top, left: contextMenu.left }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div
             className={`${styles.contextMenuItem} ${styles.deleteOption}`}
             onClick={() => {
-              const label = (activePath ? pathNodes : mainNodes).find((n) => n.id === contextMenu.id)?.data.label;
-              if (window.confirm(`Delete node "${label}"?`)) deleteNode(contextMenu.id);
+              const nodes = activePath ? pathNodes : mainNodes;
+              const node = nodes.find((n) => n.id === contextMenu.id);
+              const label = node?.data.label || 'Node';
+              if (window.confirm(`Delete node "${label}"?`)) {
+                deleteNode(contextMenu.id);
+                setContextMenu(null);
+              }
             }}
           >
             Delete Node
@@ -258,26 +424,66 @@ export default function Builder({ botId }) {
         />
       )}
       
+      {/* Loading overlay */}
+      {loading && (
+        <div className={styles.loadingOverlay}>
+          <div className={styles.loadingSpinner}>Loading...</div>
+        </div>
+      )}
+      
+      {/* Reload Animation Overlay */}
+      {reloading && (
+        <div className={styles.reloadOverlay}>
+          <div className={styles.reloadAnimation}>
+            <div className={styles.spinner}></div>
+            <p>Reloading...</p>
+          </div>
+        </div>
+      )}
+      
       {/* Main container */}
       <div className={styles.container} ref={flowWrapperRef}>
         {/* Top controls */}
         <div className={styles.topCenterControls}>
-          <button onClick={() => window.open(`/chat/${botId}`, '_blank')} className={styles.testBotButton} title="Test your chatbot in a new window">Test Bot</button>
+          <button 
+            onClick={() => window.open(`/chat/${botId}`, '_blank')} 
+            className={styles.testBotButton} 
+            title="Test your chatbot in a new window"
+          >
+            Test Bot
+          </button>
           {activePath ? (
             <>
-              <button onClick={savePathGraph} disabled={loading} className={styles.saveButton}>Save Path</button>
+              <button onClick={handleSave} disabled={loading || reloading} className={styles.saveButton}>
+                {loading ? 'Saving...' : 'Save Path'}
+              </button>
               <button onClick={closePathBuilder} className={styles.reloadButton}>Back to Main</button>
             </>
           ) : (
             <>
-              <button onClick={saveGraph} disabled={loading} className={styles.saveButton}>Save Main Flow</button>
-              <button onClick={loadMainGraph} disabled={loading} className={styles.reloadButton}>Reload</button>
+              <button onClick={handleSave} disabled={loading || reloading} className={styles.saveButton}>
+                {loading ? 'Saving...' : 'Save Main Flow'}
+              </button>
+              <button 
+                onClick={handleReload} 
+                disabled={reloading} 
+                className={styles.reloadButton}
+              >
+                {reloading ? 'Reloading...' : 'Reload'}
+              </button>
             </>
           )}
-          <button onClick={() => setAddNodePopupOpen(true)} className={styles.addNodeButton}>Add Node</button>
-          <button onClick={() => setPathPanelOpen(!pathPanelOpen)} className={styles.pathPanelButton}>
+          <button onClick={() => setAddNodePopupOpen(true)} disabled={reloading} className={styles.addNodeButton}>Add Node</button>
+          <button onClick={() => setPathPanelOpen(!pathPanelOpen)} disabled={reloading} className={styles.pathPanelButton}>
             {pathPanelOpen ? 'Hide Paths' : 'Show Paths'}
           </button>
+          
+          {/* **ADDED: Last saved indicator */}
+          {lastSaved && (
+            <span className={styles.lastSaved}>
+              Last saved: {lastSaved}
+            </span>
+          )}
         </div>
         
         {/* Path Panel */}
@@ -285,7 +491,14 @@ export default function Builder({ botId }) {
           <div className={styles.pathPanel}>
             <div className={styles.pathPanelHeader}>
               <h3>Paths</h3>
-              <button onClick={() => setCreatePathModalOpen(true)} className={styles.addPathButton}>+</button>
+              <button 
+                onClick={() => setCreatePathModalOpen(true)} 
+                className={styles.addPathButton}
+                title="Create new path"
+                disabled={reloading}
+              >
+                +
+              </button>
             </div>
             
             {/* Search Bar */}
@@ -296,11 +509,13 @@ export default function Builder({ botId }) {
                 value={pathSearchTerm}
                 onChange={(e) => setPathSearchTerm(e.target.value)}
                 className={styles.searchInput}
+                disabled={reloading}
               />
               {pathSearchTerm && (
                 <button 
                   onClick={() => setPathSearchTerm('')}
                   className={styles.clearSearchButton}
+                  disabled={reloading}
                 >
                   ✕
                 </button>
@@ -321,7 +536,7 @@ export default function Builder({ botId }) {
                   <div 
                     key={path.id} 
                     className={`${styles.pathItem} ${activePath && activePath.id === path.id ? styles.activePath : ''}`}
-                    onClick={() => openPathBuilder(path)}
+                    onClick={() => !reloading && openPathBuilder(path)}
                   >
                     <div className={styles.pathInfo}>
                       <h4>
@@ -337,16 +552,20 @@ export default function Builder({ botId }) {
                           className={styles.menuButton}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setPathMenuOpen(pathMenuOpen === path.id ? null : path.id);
+                            if (!reloading) {
+                              setPathMenuOpen(pathMenuOpen === path.id ? null : path.id);
+                            }
                           }}
+                          title="Path options"
+                          disabled={reloading}
                         >
                           ⋮
                         </button>
                         {pathMenuOpen === path.id && (
-                          <div className={styles.menuDropdown}>
+                          <div className={styles.menuDropdown} onClick={(e) => e.stopPropagation()}>
                             <div 
                               className={styles.menuItem}
-                              onClick={(e) => openRenameModal(path, e)}
+                              onClick={(e) => !reloading && openRenameModal(path, e)}
                             >
                               Rename
                             </div>
@@ -354,7 +573,9 @@ export default function Builder({ botId }) {
                               className={`${styles.menuItem} ${styles.deleteItem}`}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                deletePath(path.id);
+                                if (!reloading && window.confirm(`Are you sure you want to delete path "${path.name}"?`)) {
+                                  deletePath(path.id);
+                                }
                                 setPathMenuOpen(null);
                               }}
                             >
@@ -376,7 +597,7 @@ export default function Builder({ botId }) {
           {activePath ? (
             <div className={styles.pathHeader}>
               <h3>Editing Path: {activePath.name}</h3>
-              <p>{activePath.description}</p>
+              {activePath.description && <p>{activePath.description}</p>}
               <button onClick={closePathBuilder} className={styles.exitPathButton}>
                 Exit Path Editing
               </button>
@@ -386,6 +607,7 @@ export default function Builder({ botId }) {
               <h3>Main Chatbot Flow</h3>
             </div>
           )}
+          
           <ReactFlow
             nodes={activePath ? pathNodes : mainNodes}
             edges={activePath ? pathEdges : mainEdges}
@@ -400,10 +622,11 @@ export default function Builder({ botId }) {
             connectionLineType="smoothstep"
             fitView
             style={{ width: '100%', height: '100%' }}
-            nodesDraggable={true}
-            nodesConnectable={true}
+            nodesDraggable={!reloading}
+            nodesConnectable={!reloading}
             autoPanOnNodeDrag={true}
             nodeExtent={[[0, 0], [Infinity, Infinity]]}
+            proOptions={{ hideAttribution: true }}
           >
             <Background color="#a2a2a7ff" gap={20} variant="cross" size={4.9} />
             <Controls />

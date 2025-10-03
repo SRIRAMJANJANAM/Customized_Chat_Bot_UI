@@ -1,4 +1,3 @@
-/* Global Reset and Base */
 * {
     margin: 0;
     padding: 0;
@@ -6,14 +5,6 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
-body {
-    background-color: #f8fafc;
-    color: #334155;
-    overflow: hidden;
-    height: 100vh;
-}
-
-/* Container */
 .container {
     display: flex;
     width: 100%;
@@ -22,26 +13,10 @@ body {
     overflow: hidden;
 }
 
-/* Overlay for modals/popups */
-.overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    backdrop-filter: blur(4px);
-}
-
 .hidden {
     display: none;
 }
 
-/* Canvas area */
 .canvasWrapper {
     flex: 1;
     height: 100%;
@@ -80,7 +55,6 @@ body {
     background: #1e293b;
 }
 
-/* Top Controls */
 .topCenterControls {
     position: absolute;
     top: 15px;
@@ -105,7 +79,6 @@ body {
 .pathPanelButton {
     padding: 8px 16px;
     font-weight: bold;
-    
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -124,8 +97,6 @@ body {
     border-color: red;
     transform: translateY(-6px);
 }
-
-/* Node Popup */
 .popup {
     position: fixed;
     top: 50%;
@@ -149,103 +120,23 @@ body {
     color: #ffffff;
 }
 
-/* Modal */
-.modal {
-    background: white;
-    border-radius: 16px;
-    padding: 0;
-    width: 90%;
-    max-width: 600px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-    display: flex;
-    flex-direction: column;
-    border: 1px solid #e2e8f0;
-}
-
-.modalHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px;
-    border-bottom: 1px solid #f1f5f9;
-    background: #f8fafc;
-    border-radius: 16px 16px 0 0;
-}
-
-.modalTitle {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: #0f172a;
-}
-
-.closeButton {
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    color: #64748b;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-}
-
-.closeButton:hover {
-    background-color: #f1f5f9;
-    color: #0f172a;
-}
-
-.modalContent {
-    padding: 24px;
-}
-
-.label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-    color: #ffffff;
-    font-size: 14px;
-}
-
-.input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ffffff;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    font-size: 14px;
-    transition: all 0.2s;
-    color: white;
-}
-
-.input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-    color: white;
-}
-
 .quillEditor {
     height: 200px;
     margin-bottom: 20px;
     border-radius: 8px;
     overflow: hidden;
-    border: 1px solid #d1d5db;
-    color: rgb(245, 200, 2);
+    color: rgb(245, 241, 2);
     font-weight: bolder;
 }
 
-.actionButtons {
-    display: flex;
-    gap: 12px;
-    margin-top: 20px;
-    justify-content: flex-end;
+.quillEditor .ql-container {
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.quillEditor .ql-toolbar {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
 }
 
 .actionButton {
@@ -263,6 +154,7 @@ body {
     color: black; 
     font-weight: bolder;
 }
+
 .saveBtn:hover { 
     background-color: #059669; 
     transform: translateY(-10px);
@@ -273,6 +165,7 @@ body {
     color: black; 
     border: 1px solid #e2e8f0;
 }
+
 .cancelBtn:hover { 
     background-color: #e2e8f0; 
     color: #475569;
@@ -284,13 +177,13 @@ body {
     color: white; 
     border: 1px solid #fecaca;
 }
+
 .deleteBtn:hover { 
     background-color: black; 
     transform: translateY(-10px);
     color: gold;
 }
 
-/* Context Menu */
 .contextMenu {
     position: fixed;
     background: white;
@@ -321,7 +214,6 @@ body {
     color: #dc2626;
 }
 
-/* Path Builder Modal Styles */
 .pathBuilderModal {
     background: white;
     border-radius: 16px;
@@ -381,8 +273,10 @@ body {
 }
 
 .addPathButton:hover {
-    background: #7c3aed;
-    transform: translateY(-1px);
+    background: gold;
+    transform: translateY(-4px);
+    border-radius: 50%;
+    color: #000000;
 }
 
 .pathsList {
@@ -413,9 +307,10 @@ body {
 }
 
 .pathItem:hover {
-    border-color: #7903ff;
+    border-color: #c8ff03;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     cursor: pointer;
+    border-radius: 19px;
 }
 
 .pathName {
@@ -568,13 +463,6 @@ body {
     font-weight: bolder;
 }
 
-.noPaths {
-    text-align: center;
-    color: #64748b;
-    font-style: italic;
-    padding: 20px 0;
-}
-
 .editIcon {
     transition: transform 0.2s ease;
     color: #64748b;
@@ -584,6 +472,7 @@ body {
     transform: scale(1.1);
     color: #3b82f6;
 }
+
 .pathHeader, .mainHeader {
     position: absolute;
     top: 15px;
@@ -631,51 +520,880 @@ body {
     font-size: 16px;
 }
 
-/* Mobile Styles */
-@media (max-width: 768px) {
-    .container { 
-        flex-direction: column; 
-    }
-    
-    .topCenterControls { 
-        top: 70px; 
-        width: 90%; 
-        justify-content: center; 
-        flex-wrap: wrap;
-        padding: 6px 10px;
-    }
-    
-    .testBotButton, .saveButton, .reloadButton, .addNodeButton, .pathPanelButton { 
-        flex: 1; 
-        justify-content: center;
-        min-width: 120px;
-        font-size: 12px;
-        padding: 6px 12px;
-    }
-    
-    .popup { 
-        width: 90%; 
-        max-height: 90%; 
-    }
-    
-    .modal { 
-        width: 95%; 
-        max-height: 95%; 
-    }
-    
-    .pathPanel {
-        width: 100%;
-        height: 40%;
-        bottom: 0;
-        top: auto;
-        border-left: none;
-        border-top: 1px solid #e2e8f0;
-    }
-    
-    .pathHeader, .mainHeader {
-        top: 4px;
-        padding: 12px 16px;
-    }
+/* Options Input Container */
+.optionsInputContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.optionInputRow {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.optionInput {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.optionInput:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.removeOptionButton {
+    padding: 6px 10px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.removeOptionButton:hover {
+    background: #c82333;
+}
+
+.addOptionButton {
+    padding: 8px 12px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    align-self: flex-start;
+}
+
+.addOptionButton:hover {
+    background: #218838;
+}
+
+/* Search Container */
+.searchContainer {
+    position: relative;
+    padding: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.searchInput {
+    width: 100%;
+    padding: 8px 12px;
+    padding-right: 31px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: #f9f9f9;
+    transition: border-color 0.2s ease;
+}
+
+.searchInput:focus {
+    outline: none;
+    border-color: #4f46e5;
+    background-color: #fff;
+}
+
+.clearSearchButton {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.clearSearchButton:hover {
+    background-color: #f0f0f0;
+    color: #333;
+}
+
+:global(.react-flow__handle) {
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 45% !important; 
+    background-color: rgb(136, 187, 235);
+}
+
+:global(.react-flow__handle:hover) {
+    background: #00FF00 !important; 
+    border-color: #ff0000 !important; 
+    box-shadow: 0 0 8px 11px rgba(235, 255, 54, 0.8) !important;
+}
+
+.pathMenu {
+    position: relative;
+}
+
+.menuButton {
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 16px;
+    color: #ffffff;
+    transition: background-color 0.2s;
+}
+
+.menuButton:hover {
+    border: 1px solid rgb(255, 196, 0);
+    border-radius: 5px;
+}
+
+.menuDropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e1e5e9;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    min-width: 120px;
+}
+
+.menuItem {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background-color 0.2s;
+    border-bottom: 1px solid #f0f0f0;
+    color: green;
+    font-weight: bolder;
+}
+
+.menuItem:hover {
+    background: #ffef12;
+    color: black;
+    border: 1px solid green;
+    text-align: center;
+    font-weight: bolder;
+    border-radius: 12px;
+}
+
+.deleteItem {
+    color: #dc3545;
+}
+
+.deleteItem:hover {
+    background: #ff0015;
+    border: 1px solid green;
+    color: white;
+    text-align: center;
+    border-radius: 12px;
+}
+
+.mainBadge {
+    background: #4f46e5;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    margin-left: 8px;
+    font-weight: bold;
+}
+
+.modal {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.subLabel {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #4a5568;
+    font-size: 0.85rem;
+}
+
+.input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    color: rgb(38, 0, 255);
+    font-weight: bolder;
+    background-color: white;
+}
+
+.input:focus {
+    outline: none;
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+    color: rgb(251, 255, 0);
+}
+
+.textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+}
+
+.textarea:focus {
+    outline: none;
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.helpText {
+    font-size: 0.8rem;
+    color: #ffd415;
+    margin-top: 0px;
+    margin-bottom: 16px;
+    line-height: 1.4;
+}
+
+.helpText ul {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.helpText li {
+    margin-bottom: 4px;
+    color: rgb(190, 176, 176);
+}
+
+.helpText code {
+    background: #f7fafc;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #e53e3e;
+    border: 1px solid #edf2f7;
+}
+
+/* New Form Builder Styles */
+.contentSection {
+    margin-bottom: 20px;
+}
+
+.availableAttributes {
+    margin-top: 16px;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.attributeButtons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.attributeButton {
+    background: #edf2f7;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    color: #4a5568;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.attributeButton:hover {
+    background: #e2e8f0;
+    border-color: #a0aec0;
+    transform: translateY(-1px);
+}
+
+.formFieldsContainer {
+    margin-bottom: 24px;
+}
+
+.formField {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.formField:hover {
+    border-color: #cbd5e0;
+}
+
+.fieldHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.fieldTitle {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.fieldRow {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.fieldGroup {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.fieldGroup label {
+    margin-bottom: 8px;
+}
+
+.fieldGroup input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.fieldGroup .subLabel {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.validationInput:focus {
+    outline: none;
+    border-color: #4299e1;
+    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.1);
+}
+
+.addFieldButton {
+    background: #48bb78;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.addFieldButton:hover {
+    background: #38a169;
+}
+
+/* Form Preview Styles */
+.formPreview {
+    margin-top: 24px;
+    padding: 20px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.previewContainer {
+    background: white;
+    border-radius: 6px;
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+}
+
+.previewField {
+    margin-bottom: 20px;
+}
+
+.previewField:last-child {
+    margin-bottom: 0;
+}
+.lastSaved{
+  color: white;
+}
+
+.previewLabel {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #2d3748;
+    font-size: 0.9rem;
+}
+
+.previewInput {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background: #f7fafc;
+    color: #a0aec0;
+}
+
+.previewTextarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background: #f7fafc;
+    color: #a0aec0;
+    resize: vertical;
+    min-height: 60px;
+    font-family: inherit;
+}
+
+.previewCheckbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #a0aec0;
+    cursor: not-allowed;
+}
+
+.previewRadio {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #a0aec0;
+    cursor: not-allowed;
+    margin-bottom: 4px;
+}
+
+.previewCheckbox input,
+.previewRadio input {
+    cursor: not-allowed;
+}
+
+/* Builder.module.css */
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e1e5e9;
+    background: #fafbfc;
+}
+
+.modalTitleSection {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.modalTitle {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.nodeTypeBadge {
+    background: #edf2f7;
+    color: #4a5568;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.closeButton {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #718096;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.closeButton:hover {
+    color: #ff0000;
+}
+
+.modalContent {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+.section {
+    margin-bottom: 32px;
+}
+
+.sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.sectionTitle {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sectionIcon {
+    font-size: 1.2rem;
+}
+
+.formGroup {
+    margin-bottom: 20px;
+}
+
+.label {
+    display: block;
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.required {
+    color: #e53e3e;
+    margin-left: 4px;
+}
+
+.contentSection {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.availableAttributes {
+    padding: 16px;
+    background: #f7fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+.attributesLabel {
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.attributeHelp {
+    font-size: 0.8rem;
+    color: #718096;
+    margin-top: 4px;
+}
+
+.attributeHelp code {
+    background: #edf2f7;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Consolas', monospace;
+}
+
+/* Form Grid */
+.formGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Form Fields */
+.formFieldCard {
+    background: #fafbfc;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.2s;
+}
+
+.formFieldCard:hover {
+    border-color: #cbd5e0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.fieldTitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.fieldNumber {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.fieldTypeBadge {
+    background: #ebf8ff;
+    color: #3182ce;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.fieldActions {
+    display: flex;
+    gap: 4px;
+}
+
+.moveButton, .removeFieldButton {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 6px 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.moveButton:hover:not(:disabled) {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+}
+
+.moveButton:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.removeFieldButton {
+    padding: 4px 8px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.removeFieldButton:hover {
+    background: #000000;
+    color: red;
+    font-weight: bolder;
+}
+
+.fieldGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.fieldOptions {
+    margin-bottom: 16px;
+}
+
+.checkboxLabel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #4a5568;
+}
+
+.validationRow {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.validationLabel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: #4a5568;
+    white-space: nowrap;
+}
+
+.validationHelp {
+    font-size: 0.8rem;
+    color: #48bb78;
+    padding: 8px 12px;
+    background: #f0fff4;
+    border-radius: 6px;
+    border: 1px solid #9ae6b4;
+}
+
+/* Buttons */
+.primaryButton {
+    background: #4299e1;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.primaryButton:hover {
+    background: #3182ce;
+}
+
+/* Empty State */
+.emptyState {
+    text-align: center;
+    padding: 40px 20px;
+    background: #f7fafc;
+    border: 2px dashed #cbd5e0;
+    border-radius: 8px;
+}
+
+.emptyStateIcon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+}
+
+.emptyState h4 {
+    margin: 0 0 8px 0;
+    color: #2d3748;
+}
+
+.emptyState p {
+    margin: 0 0 20px 0;
+    color: #718096;
+}
+
+.requiredAsterisk {
+    color: #e53e3e;
+}
+
+.radioGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Info Box */
+.infoBox {
+    background: #ebf8ff;
+    border: 1px solid #bee3f8;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 20px;
+}
+
+.infoBox h5 {
+    margin: 0 0 8px 0;
+    color: #2b6cb0;
+}
+
+.infoBox ul {
+    margin: 0;
+    padding-left: 20px;
+    color: #2c5282;
+}
+
+.infoBox li {
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+/* Action Buttons */
+.actionButtons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 20px;
+    border-top: 1px solid #e1e5e9;
+    margin-top: 20px;
+}
+
+.saveButton {
+    background: #48bb78;
+    color: white;
+}
+
+.saveButton:hover {
+    background: #38a169;
+}
+
+.cancelButton {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.cancelButton:hover {
+    background: #cbd5e0;
+}
+
+.deleteButton {
+    background: #fed7d7;
+    color: #c53030;
+}
+
+.deleteButton:hover {
+    background: #feb2b2;
+}
+
+.validationOptions {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 12px;
+    margin-top: 8px;
+}
+
+.validationInput {
+    margin-left: 8px;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
 }
 
 /* Small Mobile Devices */
@@ -721,6 +1439,92 @@ body {
     .topCenterControls {
         top: 60px;
     }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .modal {
+        width: 95%;
+        margin: 20px;
+    }
+    
+    .fieldRow {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .actionButtons {
+        flex-direction: column;
+    }
+    
+    .deleteBtn {
+        margin-left: 0;
+        margin-top: 8px;
+    }
+    
+    .attributeButtons {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .attributeButton {
+        width: 100%;
+        text-align: left;
+    }
+    
+    .modal {
+        margin: 10px;
+        max-height: 95vh;
+    }
+    
+    .modalContent {
+        padding: 16px;
+    }
+    
+    .formGrid,
+    .fieldGrid {
+        grid-template-columns: 1fr;
+    }
+    
+    .actionButtons {
+        flex-direction: column;
+    }
+    
+    .fieldHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .fieldActions {
+        align-self: flex-end;
+    }
+}
+
+/* Scrollable content area */
+.modal > section {
+    padding: 20px;
+    overflow-y: auto;
+    max-height: calc(90vh - 80px);
+}
+
+/* Custom scrollbar */
+.modal > section::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal > section::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.modal > section::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.modal > section::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 
 /* Dark mode support */
@@ -847,217 +1651,57 @@ body {
         color: #94a3b8;
     }
 }
-.optionsContainer {
+/* Reload Animation Styles */
+.reloadOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.optionItem {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.optionInput {
-  flex: 1;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.removeOptionButton {
-  background: #ff4444;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
-.addOptionButton {
-  background: #007bff;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  align-self: flex-start;
+.reloadAnimation {
+  text-align: center;
+  background: rgb(0, 195, 255);
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e1e5e9;
 }
 
-/* Prevent modal close when interacting with inputs */
-.input:focus,
-.optionInput:focus {
-  outline: none;
-  border-color: #007bff;
-}
-/* Add these to your existing Builder.module.css */
-.subLabel {
-  font-size: 12px;
-  color: #666;
-  margin-top: 8px;
-  margin-bottom: 4px;
+.reloadAnimation p {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  color: #333;
   font-weight: 500;
 }
 
-.textarea {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  resize: vertical;
-  min-height: 80px;
-  font-family: inherit;
-}
-
-.helpText {
-  background-color: #f8f9fa;
-  border-left: 4px solid #007bff;
-  padding: 8px 12px;
-  margin-top: 10px;
-  font-size: 12px;
-  color: #666;
-  border-radius: 4px;
-}
-
-.helpText strong {
-  color: #333;
-  display: block;
-  margin-bottom: 4px;
-}
-/* Search Container */
-.searchContainer {
-  position: relative;
-  padding: 10px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.searchInput {
-  width: 100%;
-  padding: 8px 12px;
-  padding-right: 31px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  background-color: #f9f9f9;
-  transition: border-color 0.2s ease;
-}
-
-.searchInput:focus {
-  outline: none;
-  border-color: #4f46e5;
-  background-color: #fff;
-}
-
-.clearSearchButton {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: #666;
-  cursor: pointer;
-  padding: 4px;
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
 }
 
-.clearSearchButton:hover {
-  background-color: #f0f0f0;
-  color: #333;
-}
-.noPaths {
-  padding: 20px;
-  text-align: center;
-  color: #666;
-  font-style: italic;
-}
-:global(.react-flow__handle) {
-  width: 8px !important;
-  height: 8px !important;
-  border-radius: 45% !important; 
-  background-color: rgb(136, 187, 235);
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-:global(.react-flow__handle:hover) {
-  background: #00FF00 !important; 
-  border-color: #ff0000 !important; 
-  box-shadow: 0 0 8px 11px rgba(235, 255, 54, 0.8) !important;
-}
-.pathMenu {
-  position: relative;
-}
-
-.menuButton {
-  background: none;
-  border: none;
-  padding: 4px 8px;
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 16px;
-  color: #ffffff;
-  transition: background-color 0.2s;
-}
-
-.menuButton:hover {
-  background: #454e5a;
-}
-
-.menuDropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background: white;
-  border: 1px solid #e1e5e9;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  min-width: 120px;
-}
-
-.menuItem {
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: background-color 0.2s;
-  border-bottom: 1px solid #f0f0f0;
-  color: green;
-  font-weight: bolder;
-}
-.menuItem:hover {
-  background: #ffef12;
-  color: black;
-  border: 1px solid green;
-  text-align: center;
-  font-weight: bolder;
-}
-
-.deleteItem {
-  color: #dc3545;
-}
-
-.deleteItem:hover {
-  background: #ff0015;
-  border: 1px solid green;
-  color: white;
-  text-align: center;
-}
-
-.mainBadge {
-  background: #4f46e5;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  margin-left: 8px;
-  font-weight: bold;
+/* Disabled state for buttons during reload */
+.reloadButton:disabled,
+.addNodeButton:disabled,
+.pathPanelButton:disabled,
+.addPathButton:disabled,
+.searchInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

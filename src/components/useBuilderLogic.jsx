@@ -48,6 +48,25 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
             ? `Trigger Path: ${n.triggered_path?.name || 'None'}`
             : n.label || `${n.node_type} ${n.id}`);
 
+      // Enhanced form field conversion
+      const formFields = (n.form_fields || []).map(field => {
+        const fieldId = field.id || `field-${Date.now()}-${Math.random()}`;
+        const attributeName = field.attribute_name || field.attributeName || field.name || '';
+        const label = field.label || field.name || 'Field';
+        
+        return {
+          id: fieldId,
+          label: label,
+          attributeName: attributeName,
+          type: field.type || 'text',
+          required: field.required || false,
+          placeholder: field.placeholder || '',
+          options: field.options || [],
+          validation: field.validation || {},
+          description: field.description || ''
+        };
+      });
+
       if (n.node_type === 'message_with_options') {
         if (n.options && n.options.length > 0) {
           label = `Options: ${n.options.join(', ')}`;
@@ -56,8 +75,15 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         }
       }
 
+      // Enhanced Google Sheet form detection
       if (n.node_type === 'google_sheet') {
-        label = n.google_sheet_url ? `Google Sheet: ${n.google_sheet_url.substring(0, 30)}...` : 'Send to Google Sheet';
+        if (formFields.length > 0) {
+          label = `Form: ${formFields.length} field(s)`;
+        } else if (n.google_sheet_url) {
+          label = `Google Sheet: ${n.google_sheet_url.substring(0, 30)}...`;
+        } else {
+          label = 'Google Sheet Form (no fields)';
+        }
       }
 
       return {
@@ -79,6 +105,11 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
           googleSheetName: n.google_sheet_name || null,
           googleSheetHeaders: n.google_sheet_headers || null,
           googleSheetDataMapping: n.google_sheet_data_mapping || null,
+          formFields: formFields,
+          // FIXED: Only show form title if content is different
+          formTitle: n.form_title || (n.content ? '' : 'Please fill out the form below:'),
+          formDescription: n.form_description || '',
+          submitButtonText: n.submit_button_text || 'Submit Form'
         },
         type: 'default',
         _ntype: n.node_type,
@@ -236,6 +267,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
 
     const triggeredPath = activePath ? null : null;
 
+    // FIXED: For google_sheet nodes, set content to empty to avoid duplication
     const defaultContent = {
       greeting: 'Welcome! What topic do you need help with?',
       user_input: 'Type your answer…',
@@ -246,7 +278,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
       image: '',
       file: '',
       trigger_path: 'Select a path to trigger...',
-      google_sheet: 'User input data will be sent to Google Sheet',
+      google_sheet: '', // CHANGED: Empty content to avoid duplication
     }[type] || '';
 
     const defaultWidth = type === 'image' ? 200 : null;
@@ -256,6 +288,32 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     const position = isFirstNode
       ? { x: window.innerWidth / 2 - 100, y: 100 }
       : { x: 120 + Math.random() * 320, y: 80 + Math.random() * 280 };
+
+    // Enhanced default form fields for google_sheet node
+    const defaultFormFields = type === 'google_sheet' ? [
+      {
+        id: genId(),
+        label: 'Full Name',
+        attributeName: 'user_name',
+        type: 'text',
+        required: true,
+        placeholder: 'Enter your full name',
+        options: [],
+        validation: {},
+        description: ''
+      },
+      {
+        id: genId(),
+        label: 'Email Address',
+        attributeName: 'email',
+        type: 'email',
+        required: true,
+        placeholder: 'your.email@example.com',
+        options: [],
+        validation: {},
+        description: ''
+      }
+    ] : [];
 
     const newNode = {
       id,
@@ -267,7 +325,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
           : type === 'message_with_options'
             ? 'Message with Options'
             : type === 'google_sheet'
-            ? 'Send to Google Sheet'
+            ? 'Google Sheet Form'
             : `${type} ${id}`,
         content: defaultContent,
         nodeType: type,
@@ -283,6 +341,11 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         googleSheetName: null,
         googleSheetHeaders: null,
         googleSheetDataMapping: null,
+        formFields: defaultFormFields,
+        // FIXED: Only show form title, not duplicate content
+        formTitle: type === 'google_sheet' ? 'Please fill out the form below:' : '',
+        formDescription: '',
+        submitButtonText: 'Submit Form'
       },
       _ntype: backendNodeType,
       pathId: activePath ? activePath.id : null,
@@ -563,10 +626,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     try {
       const formData = new FormData();
 
-      const pathFlowNodes = pathNodes.filter(
-        (node) => node.pathId === activePath.id
-      );
-
       formData.append(
         'nodes',
         JSON.stringify(
@@ -589,6 +648,21 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
               google_sheet_name: n.data.googleSheetName || null,
               google_sheet_headers: n.data.googleSheetHeaders || null,
               google_sheet_data_mapping: n.data.googleSheetDataMapping || null,
+              // Enhanced form field serialization
+              form_fields: n.data.formFields?.map(field => ({
+                id: field.id,
+                label: field.label,
+                attribute_name: field.attributeName,
+                type: field.type,
+                required: field.required,
+                placeholder: field.placeholder,
+                options: field.options,
+                validation: field.validation,
+                description: field.description
+              })) || [],
+              form_title: n.data.formTitle,
+              form_description: n.data.formDescription,
+              submit_button_text: n.data.submitButtonText
             },
           }))
         )
@@ -605,6 +679,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
           }))
         )
       );
+
       pathNodes.forEach((n) => {
         if (
           (n._ntype === 'image' || n._ntype === 'file_upload') &&
@@ -649,12 +724,11 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     setLoading(true);
     try {
       const formData = new FormData();
-      const mainFlowNodes = mainNodes.filter(node => !node.pathId);
 
       formData.append(
         'nodes',
         JSON.stringify(
-          mainFlowNodes.map((n) => ({
+          mainNodes.map((n) => ({
             id: n.id,
             _ntype: n._ntype,
             position: n.position,
@@ -673,6 +747,21 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
               google_sheet_name: n.data.googleSheetName || null,
               google_sheet_headers: n.data.googleSheetHeaders || null,
               google_sheet_data_mapping: n.data.googleSheetDataMapping || null,
+              // Enhanced form field serialization
+              form_fields: n.data.formFields?.map(field => ({
+                id: field.id,
+                label: field.label,
+                attribute_name: field.attributeName,
+                type: field.type,
+                required: field.required,
+                placeholder: field.placeholder,
+                options: field.options,
+                validation: field.validation,
+                description: field.description
+              })) || [],
+              form_title: n.data.formTitle,
+              form_description: n.data.formDescription,
+              submit_button_text: n.data.submitButtonText
             },
           }))
         )
@@ -752,4 +841,4 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     savePathGraph,
     saveGraph
   };
-};  
+};
