@@ -1661,7 +1661,6 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.9);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1670,7 +1669,6 @@
 
 .reloadAnimation {
   text-align: center;
-  background: rgb(0, 195, 255);
   padding: 2rem;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -1680,15 +1678,15 @@
 .reloadAnimation p {
   margin-top: 1rem;
   font-size: 1.1rem;
-  color: #333;
-  font-weight: 500;
+  color: #fbff00;
+  font-weight: bolder;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #007bff;
+  border: 4px solid #020202;
+  border-top: 4px solid #ffe600;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto;
