@@ -706,6 +706,7 @@ export default function TestModal({ botId, onClose }) {
                   ) : m.type === 'form' ? (
                     <div className="form-message">
                       <div className="form-message-text" dangerouslySetInnerHTML={{ __html: m.text }} />
+                      Please fill out the form:
                     </div>
                   ) : (
                     <span dangerouslySetInnerHTML={{ __html: m.text }} />

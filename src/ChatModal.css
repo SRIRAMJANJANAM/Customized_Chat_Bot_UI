@@ -1270,7 +1270,7 @@
   }
   
   .form-header h4 {
-    color: #e2e8f0;
+    color: #efff15;
   }
   
   .form-description {
@@ -1314,11 +1314,9 @@
   .form-message {
     background: #1e3a5f;
     border-color: #2d4a6e;
-  }
-  
-  .form-message-text {
     color: #90cdf4;
   }
+
 }
 
 /* Error states */
