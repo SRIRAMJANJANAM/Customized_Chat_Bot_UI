@@ -162,6 +162,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         .filter(num => !isNaN(num))
         .reduce((max, curr) => (curr > max ? curr : max), 1);
       window.idCounter = maxId;
+      if (!window.idCounter) window.idCounter = 1;
       setSelected(null);
       setOriginalSelected(null);
       setEditModalOpen(false);
@@ -248,7 +249,8 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
   );
 
   const addNode = (type) => {
-    const id = genId();
+    if (!window.idCounter) window.idCounter = 1;
+    const id = `node-${++window.idCounter}`;
     const backendNodeType = {
       greeting: 'greeting',
       user_input: 'user_input',

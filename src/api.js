@@ -12,6 +12,18 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
+// Add this response interceptor to handle 401 Unauthorized globally
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('access_token');
+      window.location.href = '/'; // redirect to login page
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const getChatbots = async () => {
   return await API.get('/chatbots/');
 };
@@ -19,7 +31,6 @@ export const getChatbots = async () => {
 export const createChatbot = async (chatbotData) => {
   return await API.post('/chatbots/', chatbotData); 
 };
-
 
 export const uploadFile = async (file, node_type = 'file_upload') => {
   const formData = new FormData();
@@ -30,13 +41,11 @@ export const uploadFile = async (file, node_type = 'file_upload') => {
   });
 };
 
-
 export const saveGraph = async (chatbotId, nodes, edges, files = {}) => {
   const formData = new FormData();
   formData.append('nodes', JSON.stringify(nodes));
   formData.append('edges', JSON.stringify(edges));
 
- 
   Object.keys(files).forEach((key) => {
     formData.append(key, files[key]);
   });
