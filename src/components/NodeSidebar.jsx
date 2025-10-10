@@ -123,7 +123,7 @@ export default function NodeSidebar({ addNode }) {
         )}
       </div>
 
-      {/* Expand/Collapse Controls */}
+      {/* Expand/Collapse */}
       {!searchTerm && (
         <div style={styles.controls}>
           <button onClick={expandAll} style={styles.controlButton}>
@@ -171,7 +171,7 @@ export default function NodeSidebar({ addNode }) {
                     <p style={styles.categoryDescription}>{category.description}</p>
                   </div>
                   <div style={styles.expandIcon}>
-                    {expandedCategories[category.name] ? '▼' : '►'}
+                    {expandedCategories[category.name] ? '▴' : '▿'}
                   </div>
                 </div>
               </div>
@@ -203,12 +203,12 @@ export default function NodeSidebar({ addNode }) {
       </div>
       
       <p style={styles.hint}>
-        📌 <strong>Hint:</strong> Select a node to edit its label or content.<br />
+        ❗ <strong>Hint:</strong> Select a node to edit its label or content.<br />
         🔁 Double-click an edge to set a branch condition.<br />
-        🖼️ Use <strong>Image</strong> nodes to show pictures.<br />
+        🖼️ Use <strong>Image</strong> nodes to show pictures to users.<br />
         📂 Use <strong>File Upload</strong> nodes to request user uploads.<br />
         📋 Use <strong>Message with Options</strong> to show buttons for user selection.<br />
-        🛣️ Use <strong>Trigger Path</strong> nodes to execute specific conversation paths.
+        ⚡ Use <strong>Trigger Path</strong> nodes to execute specific flow paths.
       </p>
     </div>
   );

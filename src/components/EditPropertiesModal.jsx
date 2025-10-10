@@ -637,7 +637,7 @@ const EditPropertiesModal = ({
                 <option value="vertical-buttons">Vertical Buttons</option>
               </select>
 
-              {/* Preview of options */}
+              {/* Preview  options */}
               {selected.data.options && selected.data.options.filter(opt => opt.trim() !== '').length > 0 && (
                 <div style={{ marginTop: '10px' }}>
                   <label className={styles.label}>Preview:</label>

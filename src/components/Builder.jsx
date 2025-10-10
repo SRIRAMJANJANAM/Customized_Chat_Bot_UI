@@ -17,7 +17,6 @@ export default function Builder({ botId }) {
   const [reloading, setReloading] = useState(false);
   
   const {
-    // State
     mainNodes, setMainNodes, onMainNodesChange,
     mainEdges, setMainEdges, onMainEdgesChange,
     pathNodes, setPathNodes, onPathNodesChange,
@@ -41,8 +40,6 @@ export default function Builder({ botId }) {
     editingPath, setEditingPath,
     editPathName, setEditPathName,
     editPathDescription, setEditPathDescription,
-    
-    // Methods
     convertToFlowFormat,
     loadMainGraph,
     loadPathGraph,
@@ -264,7 +261,7 @@ export default function Builder({ botId }) {
         </div>
       )}
       
-      {/* Create Path Modal */}
+      {/* Create Path */}
       {createPathModalOpen && (
         <div className={styles.overlay} onClick={() => setCreatePathModalOpen(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -314,7 +311,7 @@ export default function Builder({ botId }) {
         </div>
       )}
 
-      {/* Rename Path Modal */}
+      {/* Rename Path */}
       {renameModalOpen && (
         <div className={styles.overlay} onClick={() => setRenameModalOpen(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -388,7 +385,7 @@ export default function Builder({ botId }) {
         </div>
       )}
       
-      {/* Edit Properties Modal */}
+      {/* Edit Properties */}
       {editModalOpen && (
         <EditPropertiesModal
           selected={selected}

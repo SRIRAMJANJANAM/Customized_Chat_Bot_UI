@@ -73,7 +73,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         }
       }
 
-      // Enhanced Google Sheet form detection
       if (n.node_type === 'google_sheet') {
         if (formFields.length > 0) {
           label = `Form: ${formFields.length} field(s)`;

@@ -12,13 +12,12 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// Add this response interceptor to handle 401 Unauthorized globally
 API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('access_token');
-      window.location.href = '/'; // redirect to login page
+      window.location.href = '/'; 
     }
     return Promise.reject(error);
   }
