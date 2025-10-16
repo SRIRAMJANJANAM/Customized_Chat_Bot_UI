@@ -6,9 +6,11 @@ const AnalyticsView = ({ botId }) => {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [tooltip, setTooltip] = useState({ visible: false, item: null, position: { x: 0, y: 0 } });
   const chartAreaRef = useRef(null);
+
+  // Always use today's date
+  const selectedDate = new Date().toISOString().split('T')[0];
 
   // Function to extract exact time from timestamp
   const getExactTimeFromTimestamp = (timestamp) => {
@@ -458,40 +460,9 @@ const AnalyticsView = ({ botId }) => {
     }
   };
 
-  const getDateOptions = () => {
-    const dates = [];
-    const today = new Date();
-    
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      const dateString = date.toISOString().split('T')[0];
-      
-      let label;
-      if (i === 0) {
-        label = 'Today';
-      } else if (i === 1) {
-        label = 'Yesterday';
-      } else {
-        label = date.toLocaleDateString('en-US', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric'
-        });
-      }
-      
-      dates.push({
-        value: dateString,
-        label: label
-      });
-    }
-    
-    return dates;
-  };
-
   useEffect(() => {
     fetchAnalytics();
-  }, [botId, selectedDate]);
+  }, [botId]); // Removed selectedDate from dependencies since it's always today
 
   return (
     <div className={styles.analyticsView}>
@@ -502,27 +473,13 @@ const AnalyticsView = ({ botId }) => {
             {formatDisplayDate(selectedDate)}
           </span>
         </div>
-        <div className={styles.dateSelector}>
-          <label htmlFor="date-select" className={styles.dateLabel}>Select Date:</label>
-          <select
-            id="date-select"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className={styles.dateSelect}
-          >
-            {getDateOptions().map((dateOption) => (
-              <option key={dateOption.value} value={dateOption.value}>
-                {dateOption.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Removed the date selector entirely */}
       </div>
 
       {loading && (
         <div className={styles.loadingState}>
           <div className={styles.spinner}></div>
-          <p>Loading user engagement data...</p>
+          <p>Loading today's user engagement data...</p>
         </div>
       )}
 
@@ -531,7 +488,7 @@ const AnalyticsView = ({ botId }) => {
           <div className={styles.errorContent}>
             <span className={styles.errorIcon}>⚠️</span>
             <div>
-              <strong>Unable to load analytics</strong>
+              <strong>Unable to load today's analytics</strong>
               <p>{error}</p>
             </div>
           </div>
@@ -570,7 +527,7 @@ const AnalyticsView = ({ botId }) => {
 
           <div className={styles.chartSection}>
             <div className={styles.sectionHeader}>
-              <h3>User Engagement Timeline</h3>
+              <h3>Today's User Engagement Timeline</h3>
               <p>
                 Each dot represents one user. Hover over dots to see exact trigger times.
               </p>
@@ -622,8 +579,8 @@ const AnalyticsView = ({ botId }) => {
       {!analyticsData && !loading && !error && (
         <div className={styles.emptyState}>
           <div className={styles.emptyIcon}>📊</div>
-          <h3>No User Data</h3>
-          <p>No user engagement data found for {formatDisplayDate(selectedDate)}.</p>
+          <h3>No User Data Today</h3>
+          <p>No user engagement data found for today.</p>
           <button onClick={fetchAnalytics} className={styles.refreshButton}>
             Check for Data
           </button>
