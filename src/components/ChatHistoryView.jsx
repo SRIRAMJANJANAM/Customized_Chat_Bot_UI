@@ -382,7 +382,6 @@ const ChatHistoryView = ({ botId }) => {
         )}
         
         {selectedChatHistory ? (
-          // Show specific chat conversation
           <div className={styles.chatConversation}>
             <div className={styles.conversationHeader}>
               <button 
@@ -512,7 +511,7 @@ const ChatHistoryView = ({ botId }) => {
                   })}
                 </div>
                 
-                {/* Pagination Controls */}
+                {/* Pagination  */}
                 {totalPages > 1 && (
                   <Pagination
                     currentPage={currentPage}

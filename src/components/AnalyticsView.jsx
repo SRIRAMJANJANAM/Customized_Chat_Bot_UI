@@ -9,10 +9,8 @@ const AnalyticsView = ({ botId }) => {
   const [tooltip, setTooltip] = useState({ visible: false, item: null, position: { x: 0, y: 0 } });
   const chartAreaRef = useRef(null);
 
-  // Always use today's date
   const selectedDate = new Date().toISOString().split('T')[0];
 
-  // Function to extract exact time from timestamp
   const getExactTimeFromTimestamp = (timestamp) => {
     if (!timestamp) return 'Unknown Time';
     
@@ -30,32 +28,26 @@ const AnalyticsView = ({ botId }) => {
     }
   };
 
-  // Function to get exact time from user_identifier (more robust)
   const getExactTimeFromIdentifier = (userIdentifier) => {
     if (!userIdentifier) return null;
     
     try {
-      // Look for time pattern in identifier (e.g., "0441AM", "1000AM", "1230PM")
       const timeMatch = userIdentifier.match(/(\d{3,4})(AM|PM)/i);
       if (timeMatch) {
         const timeDigits = timeMatch[1];
         const period = timeMatch[2].toUpperCase();
-        
-        // Handle 3-digit times (e.g., "945AM" -> "09:45 AM")
+
         if (timeDigits.length === 3) {
           const hour = timeDigits.substring(0, 1);
           const minute = timeDigits.substring(1, 3);
           return `0${hour}:${minute} ${period}`;
         }
-        // Handle 4-digit times (e.g., "0945AM" -> "09:45 AM")
         else if (timeDigits.length === 4) {
           const hour = timeDigits.substring(0, 2);
           const minute = timeDigits.substring(2, 4);
           return `${hour}:${minute} ${period}`;
         }
       }
-      
-      // Alternative pattern: look for HHMM format followed by AM/PM
       const altMatch = userIdentifier.match(/(\d{2})(\d{2})(AM|PM)/i);
       if (altMatch) {
         const hour = altMatch[1];
@@ -78,27 +70,20 @@ const AnalyticsView = ({ botId }) => {
         params: { date: selectedDate }
       });
       
-      console.log('Analytics API Response:', response.data); // Debug log
+      console.log('Analytics API Response:', response.data); 
       
       if (response.data && Array.isArray(response.data.engagement_data)) {
-        // Process the data to ensure time fields are consistent
         const processedData = {
           ...response.data,
           engagement_data: response.data.engagement_data.map(item => {
-            console.log('Processing item:', item); // Debug log
-            
-            // Get the exact time from available fields - prioritize timestamp first
+            console.log('Processing item:', item); 
             let exactTime = null;
-            
-            // First try to get from timestamp (most accurate)
             if (item.timestamp) {
               exactTime = getExactTimeFromTimestamp(item.timestamp);
-              console.log('Time from timestamp:', exactTime); // Debug log
+              console.log('Time from timestamp:', exactTime);
             }
-            
-            // If no timestamp time, try the time field
+
             if (!exactTime && item.time) {
-              // Convert 24-hour format to 12-hour format if needed
               if (item.time.includes(':')) {
                 const [hours, minutes] = item.time.split(':');
                 const hourNum = parseInt(hours);
@@ -108,31 +93,25 @@ const AnalyticsView = ({ botId }) => {
               } else {
                 exactTime = item.time;
               }
-              console.log('Time from time field:', exactTime); // Debug log
+              console.log('Time from time field:', exactTime); 
             }
-            
-            // If still no time, try to extract from user identifier
             if (!exactTime && item.user_identifier) {
               exactTime = getExactTimeFromIdentifier(item.user_identifier);
-              console.log('Time from identifier:', exactTime); // Debug log
+              console.log('Time from identifier:', exactTime); 
             }
-            
-            // Fallback to current time if still no time
             if (!exactTime) {
               exactTime = new Date().toLocaleTimeString('en-US', {
                 hour: '2-digit',
                 minute: '2-digit',
                 hour12: true
               });
-              console.log('Time fallback to current:', exactTime); // Debug log
+              console.log('Time fallback to current:', exactTime); 
             }
 
             return {
               ...item,
               exact_time: exactTime,
-              // Ensure timestamp is properly formatted
               timestamp: item.timestamp || new Date().toISOString(),
-              // Ensure we have all required fields
               user_identifier: item.user_identifier || `user_${Math.random().toString(36).substr(2, 9)}`,
               message_count: item.message_count || 0,
               session_duration: item.session_duration || 0
@@ -140,7 +119,7 @@ const AnalyticsView = ({ botId }) => {
           })
         };
         
-        console.log('Processed analytics data:', processedData); // Debug log
+        console.log('Processed analytics data:', processedData); 
         setAnalyticsData(processedData);
       } else {
         throw new Error('Invalid data format from server');
@@ -148,22 +127,18 @@ const AnalyticsView = ({ botId }) => {
     } catch (err) {
       console.error('Analytics fetch error:', err);
       setError(err.message || 'Failed to load analytics data');
-      // Generate mock data with proper time handling
       setAnalyticsData(generateMockAnalyticsData(selectedDate));
     } finally {
       setLoading(false);
     }
   };
 
-  // Safe mock data generator with proper time handling
   const generateMockAnalyticsData = (date) => {
     try {
       const engagementData = [];
       const selectedDateObj = new Date(date);
       
       const totalUsers = Math.floor(Math.random() * 10) + 15;
-      
-      // Predefined exact times in proper format
       const exactTimes = [
         '04:41 AM', '05:15 AM', '06:30 AM', '07:45 AM', '08:20 AM',
         '09:10 AM', '10:00 AM', '10:30 AM', '11:15 AM', '11:45 AM',
@@ -174,8 +149,6 @@ const AnalyticsView = ({ botId }) => {
       
       for (let i = 0; i < totalUsers; i++) {
         const exactTime = exactTimes[i % exactTimes.length];
-        
-        // Convert 12-hour time to proper timestamp
         let [timePart, period] = exactTime.split(' ');
         let [hours, minutes] = timePart.split(':');
         let hour24 = parseInt(hours);
@@ -193,8 +166,7 @@ const AnalyticsView = ({ botId }) => {
         const intensity = messageCount > 10 ? 0.8 + (Math.random() * 0.2) : 
                          messageCount > 5 ? 0.4 + (Math.random() * 0.4) : 
                          0.1 + (Math.random() * 0.3);
-        
-        // Create user identifier with consistent time format
+
         const timeForId = exactTime.replace(':', '').replace(' ', '');
         const userIdentifier = `orai_RAM_${Math.floor(Math.random() * 9000) + 1000}_${timeForId}`;
         
@@ -202,16 +174,15 @@ const AnalyticsView = ({ botId }) => {
           user_id: `user_${i + 1}`,
           user_identifier: userIdentifier,
           date: engagementTime.toISOString().split('T')[0],
-          time: exactTime, // Store the exact time in readable format
-          exact_time: exactTime, // Explicit exact time field
+          time: exactTime, 
+          exact_time: exactTime, 
           timestamp: engagementTime.toISOString(),
           message_count: messageCount,
           intensity: intensity,
           session_duration: Math.floor(Math.random() * 30) + 1
         });
       }
-      
-      // Sort by timestamp
+
       engagementData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
       
       const totalEngagements = engagementData.length;
@@ -246,17 +217,14 @@ const AnalyticsView = ({ botId }) => {
     }
   };
 
-  // FIXED: Enhanced tooltip with correct time display
   const EnhancedEngagementTooltip = () => {
     if (!tooltip.visible || !tooltip.item) return null;
     
     const { item } = tooltip;
-    
-    // Get the exact time - prioritize different possible fields
     const exactTime = item.exact_time || item.time || getExactTimeFromTimestamp(item.timestamp);
     
-    console.log('Tooltip item:', item); // Debug log
-    console.log('Exact time for tooltip:', exactTime); // Debug log
+    console.log('Tooltip item:', item); 
+    console.log('Exact time for tooltip:', exactTime); 
     
     return (
       <div 
@@ -309,7 +277,6 @@ const AnalyticsView = ({ botId }) => {
     );
   };
 
-  // FIXED: Engagement dots with correct timeline positioning
   const getEngagementDots = () => {
     if (!analyticsData?.engagement_data || !Array.isArray(analyticsData.engagement_data)) {
       return null;
@@ -362,8 +329,6 @@ const AnalyticsView = ({ botId }) => {
         const opacity = 0.4 + (Math.min(messageCount / 30, 1) * 0.6);
         const baseColor = messageCount > 10 ? '34, 101, 189' : '74, 144, 226';
         const colorIntensity = messageCount > 10 ? 1 : 0.7;
-        
-        // FIXED: Calculate position based on exact hour and minute from timestamp
         const userTime = new Date(user.timestamp);
         const userHours = userTime.getHours();
         const userMinutes = userTime.getMinutes();
@@ -374,9 +339,7 @@ const AnalyticsView = ({ botId }) => {
           minutes: userMinutes,
           time: user.time,
           exact_time: user.exact_time
-        }); // Debug log
-        
-        // Calculate position as percentage of 24-hour day
+        }); 
         const totalMinutesInDay = 24 * 60;
         const userMinutesInDay = (userHours * 60) + userMinutes;
         const position = (userMinutesInDay / totalMinutesInDay) * 100;
@@ -462,7 +425,7 @@ const AnalyticsView = ({ botId }) => {
 
   useEffect(() => {
     fetchAnalytics();
-  }, [botId]); // Removed selectedDate from dependencies since it's always today
+  }, [botId]); 
 
   return (
     <div className={styles.analyticsView}>
@@ -473,7 +436,6 @@ const AnalyticsView = ({ botId }) => {
             {formatDisplayDate(selectedDate)}
           </span>
         </div>
-        {/* Removed the date selector entirely */}
       </div>
 
       {loading && (

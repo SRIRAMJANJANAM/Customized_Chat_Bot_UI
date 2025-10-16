@@ -473,7 +473,6 @@ export default function Builder({ botId }) {
 
         {/* Main Content Area */}
         <div className={styles.mainContent}>
-          {/* Top controls - Only show in builder view */}
           {activeView === 'builder' && (
             <div className={styles.topCenterControls}>
               <button 
@@ -510,8 +509,6 @@ export default function Builder({ botId }) {
               </button>
             </div>
           )}
-          
-          {/* Path Panel - Only show in builder view */}
           {activeView === 'builder' && pathPanelOpen && (
             <div className={styles.pathPanel}>
               <div className={styles.pathPanelHeader}>
@@ -570,7 +567,7 @@ export default function Builder({ botId }) {
                         </h4>
                         {path.description && <p>{path.description}</p>}
                       </div>
-                      {/* Three dots menu for non-main paths */}
+                      {/* Three dots  for non-main  */}
                       {!path.is_main && (
                         <div className={styles.pathMenu}>
                           <button 

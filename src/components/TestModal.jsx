@@ -718,7 +718,7 @@ export default function TestModal({ botId, onClose }) {
             ))}
           </div>
 
-          {/*Enhanced Google Sheet Form */}
+          {/*Enhanced Google Sheet  */}
           {showForm && formFields.length > 0 && (
             <div className="form-container">
               <form onSubmit={handleFormSubmit} className="chat-form">
@@ -755,7 +755,7 @@ export default function TestModal({ botId, onClose }) {
             </div>
           )}
 
-          {/* Upload Success Toast Notification */}
+          {/* Upload Success  */}
           {uploadSuccess && (
             <div className="upload-success-toast">
               <div className="toast-content">
@@ -784,7 +784,6 @@ export default function TestModal({ botId, onClose }) {
             </div>
           )}
 
-          {/* Show input area only when no form is active */}
           {!showForm && (
             <div className={`chat-input-container ${fileRequested ? 'file-requested' : ''}`}>
               <div className="input-wrapper">
@@ -820,7 +819,7 @@ export default function TestModal({ botId, onClose }) {
         </div>
       </div>
 
-      {/* Fullscreen image overlay */}
+      {/* Fullscreen image  */}
       {fullscreenImage && (
         <div
           className="fullscreen-overlay"
