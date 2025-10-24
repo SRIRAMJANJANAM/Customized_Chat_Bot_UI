@@ -18,6 +18,8 @@ export default function Builder({ botId }) {
   const flowWrapperRef = useRef(null);
   const [reloading, setReloading] = useState(false);
   const [activeView, setActiveView] = useState('builder'); 
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [selectedIcon, setSelectedIcon] = useState('chat'); // Default icon
   
   const {
     mainNodes, setMainNodes, onMainNodesChange,
@@ -79,6 +81,83 @@ export default function Builder({ botId }) {
 
   const openBuilder = () => {
     setActiveView('builder');
+  };
+
+  const openWebsiteIntegration = () => {
+    setActiveView('integration');
+  };
+
+  const getIconSvg = (iconType) => {
+    switch(iconType) {
+      case 'robot':
+        return '🤖';
+      case 'message':
+        return '💭';
+      case 'support':
+        return '🛟';
+      case 'help':
+        return '❓';
+      default:
+        return '💬';
+    }
+  };
+
+  const getIconName = (iconType) => {
+    switch(iconType) {
+      case 'robot':
+        return 'AI Assistant';
+      case 'message':
+        return 'Chat Bubble';
+      case 'support':
+        return 'Customer Support';
+      case 'help':
+        return 'Help Desk';
+      default:
+        return 'Chat';
+    }
+  };
+
+  const generateScriptTag = () => {
+    const currentDomain = window.location.origin;
+    const selectedIconSvg = getIconSvg(selectedIcon);
+    const scriptContent = `<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var chatIcon = document.createElement('div');
+    chatIcon.innerHTML = '${selectedIconSvg}';
+    chatIcon.style.cssText = 'position:fixed;bottom:20px;right:20px;width:60px;height:60px;background:#4a6ee0;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;font-size:24px;color:white;';
+    
+    var chatWindow = document.createElement('iframe');
+    chatWindow.src = '${currentDomain}/chat/${botId}';
+    chatWindow.style.cssText = 'position:fixed;bottom:80px;right:20px;width:350px;height:450px;border:none;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:999;display:none;';
+    
+    document.body.appendChild(chatIcon);
+    document.body.appendChild(chatWindow);
+    
+    chatIcon.onclick = function() {
+        chatWindow.style.display = chatWindow.style.display === 'none' ? 'block' : 'none';
+    };
+});
+</script>`;
+    
+    return scriptContent;
+  };
+
+  const copyToClipboard = () => {
+    const scriptText = generateScriptTag();
+    navigator.clipboard.writeText(scriptText).then(() => {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 3000);
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+      alert('Failed to copy script. Please try again.');
+    });
+  };
+
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const handleReload = async () => {
@@ -286,7 +365,7 @@ export default function Builder({ botId }) {
               <h3 className={styles.modalTitle}>Create New Path</h3>
               <button onClick={() => setCreatePathModalOpen(false)} className={styles.closeButton}>✕</button>
             </div>
-            <section className={styles.modalContent}>
+            <div className={styles.modalContent}>
               <label className={styles.label}>Path Name</label>
               <input
                 value={newPathName}
@@ -323,7 +402,7 @@ export default function Builder({ botId }) {
                   Cancel
                 </button>
               </div>
-            </section>
+            </div>
           </div>
         </div>
       )}
@@ -336,7 +415,7 @@ export default function Builder({ botId }) {
               <h3 className={styles.modalTitle}>Rename Path</h3>
               <button onClick={() => setRenameModalOpen(false)} className={styles.closeButton}>✕</button>
             </div>
-            <section className={styles.modalContent}>
+            <div className={styles.modalContent}>
               <label className={styles.label}>Path Name</label>
               <input
                 value={editPathName}
@@ -373,7 +452,7 @@ export default function Builder({ botId }) {
                   Cancel
                 </button>
               </div>
-            </section>
+            </div>
           </div>
         </div>
       )}
@@ -466,6 +545,17 @@ export default function Builder({ botId }) {
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M3 22V8h4v14H3zm7 0V2h4v20h-4zm7 0v-8h4v8h-4z"/>
+              </svg>
+            </button>
+
+            {/* Configuration Icon */}
+            <button 
+              className={`${styles.sidebarIcon} ${activeView === 'integration' ? styles.active : ''}`}
+              onClick={openWebsiteIntegration}
+              title="Website Integration"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
               </svg>
             </button>
           </div>
@@ -659,9 +749,148 @@ export default function Builder({ botId }) {
               </div>
             ) : activeView === 'chat' ? (
               <ChatHistoryView botId={botId} />
-            ) : (
+            ) : activeView === 'analytics' ? (
               <AnalyticsView botId={botId} />
-            )}
+            ) : activeView === 'integration' ? (
+              /* Website Integration View */
+              <div className={styles.integrationView}>
+                <div className={styles.integrationContainer}>
+                  <div className={styles.integrationHeader}>
+                    <h2>Website Integration</h2>
+                    <p>Add this chatbot to your website with a simple script</p>
+                  </div>
+                  
+                  <div className={styles.contentScroll}>
+                    {/* Quick Navigation */}
+                    <div className={styles.quickNav}>
+                      <button onClick={() => scrollToSection('icon-section')}>
+                        🎨 Icon Style
+                      </button>
+                      <button onClick={() => scrollToSection('script-section')}>
+                        📋 Script
+                      </button>
+                      <button onClick={() => scrollToSection('instructions-section')}>
+                        🚀 Instructions
+                      </button>
+                      <button onClick={() => scrollToSection('preview-section')}>
+                        👁️ Preview
+                      </button>
+                    </div>
+
+                    {/* Icon Selection Section */}
+                    <div id="icon-section" className={styles.iconSection}>
+                      <h3>Choose Your Chat Icon</h3>
+                      <p>Select an icon that matches your website's style</p>
+                      <div className={styles.iconGrid}>
+                        <div 
+                          className={`${styles.iconOption} ${selectedIcon === 'robot' ? styles.selected : ''}`}
+                          onClick={() => setSelectedIcon('robot')}
+                        >
+                          <div className={styles.iconPreview}>🤖</div>
+                          <span>AI Assistant</span>
+                        </div>
+                        <div 
+                          className={`${styles.iconOption} ${selectedIcon === 'message' ? styles.selected : ''}`}
+                          onClick={() => setSelectedIcon('message')}
+                        >
+                          <div className={styles.iconPreview}>💭</div>
+                          <span>Chat Bubble</span>
+                        </div>
+                        <div 
+                          className={`${styles.iconOption} ${selectedIcon === 'support' ? styles.selected : ''}`}
+                          onClick={() => setSelectedIcon('support')}
+                        >
+                          <div className={styles.iconPreview}>🛟</div>
+                          <span>Customer Support</span>
+                        </div>
+                        <div 
+                          className={`${styles.iconOption} ${selectedIcon === 'help' ? styles.selected : ''}`}
+                          onClick={() => setSelectedIcon('help')}
+                        >
+                          <div className={styles.iconPreview}>❓</div>
+                          <span>Help Desk</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Script Section */}
+                    <div id="script-section" className={styles.scriptSection}>
+                      <div className={styles.scriptHeader}>
+                        <h3>Integration Script</h3>
+                        <button 
+                          onClick={copyToClipboard}
+                          className={styles.copyButton}
+                          title="Copy script to clipboard"
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                          </svg>
+                          Copy Script
+                        </button>
+                      </div>
+                      
+                      <div className={styles.scriptContainer}>
+                        <pre className={styles.scriptCode}>
+                          {generateScriptTag()}
+                        </pre>
+                      </div>
+                    </div>
+
+                    {/* Instructions Section */}
+                    <div id="instructions-section" className={styles.instructions}>
+                      <h3>How to Install</h3>
+                      <div className={styles.instructionSteps}>
+                        <div className={styles.instructionStep}>
+                          <div className={styles.stepNumber}>1</div>
+                          <div className={styles.stepContent}>
+                            <h4>Choose Your Icon</h4>
+                            <p>Select an icon style that matches your website's design from the options above</p>
+                          </div>
+                        </div>
+                        <div className={styles.instructionStep}>
+                          <div className={styles.stepNumber}>2</div>
+                          <div className={styles.stepContent}>
+                            <h4>Copy the Script</h4>
+                            <p>Click the "Copy Script" button to copy the integration code with your selected icon</p>
+                          </div>
+                        </div>
+                        <div className={styles.instructionStep}>
+                          <div className={styles.stepNumber}>3</div>
+                          <div className={styles.stepContent}>
+                            <h4>Paste in Your Website</h4>
+                            <p>Paste the script just before the closing &lt;/body&gt; tag in your website HTML code</p>
+                          </div>
+                        </div>
+                        <div className={styles.instructionStep}>
+                          <div className={styles.stepNumber}>4</div>
+                          <div className={styles.stepContent}>
+                            <h4>Publish Your Website</h4>
+                            <p>Save your changes and publish your website. The chat widget will appear automatically.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Preview Section */}
+                    <div id="preview-section" className={styles.preview}>
+                      <h3>Live Preview</h3>
+                      <p>Here's how the chat widget will appear on your website with the <strong>{getIconName(selectedIcon)}</strong> icon</p>
+                      <div className={styles.previewDemo}>
+                        <div className={styles.chatIconDemo}>{getIconSvg(selectedIcon)}</div>
+                        <div className={styles.chatWindowDemo}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Success Message */}
+                {copySuccess && (
+                  <div className={styles.copySuccess}>
+                    Script copied to clipboard!
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
