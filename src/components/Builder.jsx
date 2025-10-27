@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import ReactFlow, { Background, Controls, addEdge, useEdgesState, useNodesState } from 'reactflow';
+import ReactFlow, { Background, Controls, addEdge, useEdgesState, useNodesState,  ConnectionLineType  } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { API } from '../api';
 import NodeSidebar from './NodeSidebar';
@@ -723,29 +723,47 @@ document.addEventListener('DOMContentLoaded', function() {
                   </div>
                 )}
                 
-                <ReactFlow
-                  nodes={activePath ? pathNodes : mainNodes}
-                  edges={activePath ? pathEdges : mainEdges}
-                  onNodesChange={activePath ? onPathNodesChange : onMainNodesChange}
-                  onEdgesChange={activePath ? onPathEdgesChange : onMainEdgesChange}
-                  onConnect={onConnect}
-                  onNodeClick={onNodeClick}
-                  onNodeDoubleClick={onNodeDoubleClick}
-                  onNodeContextMenu={onNodeContextMenu}
-                  onEdgeDoubleClick={onEdgeDoubleClick}
-                  connectionLineStyle={{ stroke: '#f70404ff', strokeWidth: 2 }}
-                  connectionLineType="smoothstep"
-                  fitView
-                  style={{ width: '100%', height: '100%' }}
-                  nodesDraggable={!reloading}
-                  nodesConnectable={!reloading}
-                  autoPanOnNodeDrag={true}
-                  nodeExtent={[[0, 0], [Infinity, Infinity]]}
-                  proOptions={{ hideAttribution: true }}
-                >
-                  <Background color="#a2a2a7ff" gap={20} variant="cross" size={4.9} />
-                  <Controls />
-                </ReactFlow>
+              <ReactFlow
+                nodes={activePath ? pathNodes : mainNodes}
+                edges={activePath ? pathEdges : mainEdges}
+                onNodesChange={activePath ? onPathNodesChange : onMainNodesChange}
+                onEdgesChange={activePath ? onPathEdgesChange : onMainEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={onNodeClick}
+                onNodeDoubleClick={onNodeDoubleClick}
+                onNodeContextMenu={onNodeContextMenu}
+                onEdgeDoubleClick={onEdgeDoubleClick}
+                connectionLineStyle={{ 
+                  stroke: '#007bff', 
+                  strokeWidth: 2,
+                  strokeDasharray: 'none'
+                }}
+                connectionLineType={ConnectionLineType.SmoothStep}
+                connectionRadius={8}
+                defaultEdgeOptions={{
+                  type: 'smoothstep',
+                  style: {
+                    stroke: '#007bff',
+                    strokeWidth: 2,
+                  },
+                  markerEnd: {
+                    type: 'arrowclosed',
+                    color: '#007bff',
+                  },
+                }}
+                fitView
+                style={{ width: '100%', height: '100%' }}
+                nodesDraggable={!reloading}
+                nodesConnectable={!reloading}
+                autoPanOnNodeDrag={true}
+                nodeExtent={[[0, 0], [Infinity, Infinity]]}
+                proOptions={{ hideAttribution: true }}
+              >
+                <Background color="#a2a2a7ff" gap={20} variant="cross" size={4.9} />
+                <Controls />
+              </ReactFlow>
+
+
               </div>
             ) : activeView === 'chat' ? (
               <ChatHistoryView botId={botId} />
