@@ -672,25 +672,21 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         )
       );
 
-      pathNodes.forEach((n) => {
+      // Fixed file upload processing for path graph
+      for (const n of pathNodes) {
         if (
           (n._ntype === 'image' || n._ntype === 'file_upload') &&
           n.data.fileContent?.startsWith('data:')
         ) {
           try {
-            const base64Data = n.data.fileContent.split(',')[1];
-            const mimeString = n.data.fileContent.split(',')[0].split(':')[1].split(';')[0];
-            const byteString = atob(base64Data);
-            const ab = new ArrayBuffer(byteString.length);
-            const ia = new Uint8Array(ab);
-            for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-            const blob = new Blob([ab], { type: mimeString });
-            formData.append(n.id, blob, n.data.fileName);
+            const response = await fetch(n.data.fileContent);
+            const blob = await response.blob();
+            formData.append(n.id, blob, n.data.fileName || `file-${n.id}`);
           } catch (error) {
             console.error('Error processing file for node', n.id, error);
           }
         }
-      });
+      }
 
       const response = await API.post(`/paths/${activePath.id}/save_graph/`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -769,6 +765,22 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
           }))
         )
       );
+
+      // Fixed file upload processing for main graph
+      for (const n of mainNodes) {
+        if (
+          (n._ntype === 'image' || n._ntype === 'file_upload') &&
+          n.data.fileContent?.startsWith('data:')
+        ) {
+          try {
+            const response = await fetch(n.data.fileContent);
+            const blob = await response.blob();
+            formData.append(n.id, blob, n.data.fileName || `file-${n.id}`);
+          } catch (error) {
+            console.error('Error processing file for node', n.id, error);
+          }
+        }
+      }
 
       await API.post(`/chatbots/${botId}/save_graph/`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },

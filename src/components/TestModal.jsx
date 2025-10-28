@@ -21,88 +21,92 @@ export default function TestModal({ botId, onClose }) {
   const [currentFormNodeId, setCurrentFormNodeId] = useState(null);
   const scrollRef = useRef(null);
 
+  // Initialize session ID
   useEffect(() => {
     if (!sessionId) {
       setSessionId(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
     }
-  }, []);
+  }, [sessionId]);
 
+  // Auto-scroll to bottom
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [transcript, running, showForm]);
 
+  // Process backend responses and update UI state
   useEffect(() => {
-    if (transcript.length > 0) {
-      const lastMessage = transcript[transcript.length - 1];
-      const isFileRequest = lastMessage.from === 'bot' && 
-        (lastMessage.type === 'file_request' || 
-         (lastMessage.text && (
-           lastMessage.text.toLowerCase().includes('requesting a file') ||
-           lastMessage.text.toLowerCase().includes('attach one below') ||
-           lastMessage.text.toLowerCase().includes('press send') ||
-           lastMessage.text.toLowerCase().includes('upload a file') ||
-           lastMessage.text.toLowerCase().includes('send a file')
-         )));
-      
-      setFileRequested(isFileRequest);
-      const isMessageWithOptions = lastMessage.from === 'bot' && 
-        lastMessage.type === 'message_with_options';
-      
-      if (isMessageWithOptions) {
-        setSelectedOption(null);
-      }
-      const hasFormFields = lastMessage.form_fields && lastMessage.form_fields.length > 0;
-      const isFormNode = lastMessage.node_type === 'google_sheet' || lastMessage.type === 'form';
-      const hasFormInContent = lastMessage.content && lastMessage.content.form_fields;
-      
-      console.log('Form detection:', { 
-        hasFormFields, 
-        isFormNode, 
-        hasFormInContent,
-        lastMessage 
-      });
-
-      if (hasFormFields || isFormNode || hasFormInContent) {
-        const fields = lastMessage.form_fields || 
-                     lastMessage.content?.form_fields || 
-                     [];
-        
-        setFormFields(fields);
-        setShowForm(true);
-        setCurrentFormNodeId(lastMessage.node_id || currentNodeId);
-        const initialFormData = {};
-        fields.forEach(field => {
-          initialFormData[field.attributeName || field.attribute_name || field.name] = '';
-        });
-        setFormData(initialFormData);
-        
-        console.log('Form initialized:', { fields, initialFormData });
-      } else {
-        setShowForm(false);
-        setFormFields([]);
-        setFormData({});
-      }
-    } else {
+    if (transcript.length === 0) {
       setFileRequested(false);
       setSelectedOption(null);
       setShowForm(false);
       setFormFields([]);
       setFormData({});
+      return;
     }
-  }, [transcript, currentNodeId]);
 
+    const lastMessage = transcript[transcript.length - 1];
+    
+    // Check for file requests
+    const isFileRequest = lastMessage.from === 'bot' && 
+      (lastMessage.type === 'file_request' || 
+       (lastMessage.text && (
+         lastMessage.text.toLowerCase().includes('requesting a file') ||
+         lastMessage.text.toLowerCase().includes('attach one below') ||
+         lastMessage.text.toLowerCase().includes('press send') ||
+         lastMessage.text.toLowerCase().includes('upload a file') ||
+         lastMessage.text.toLowerCase().includes('send a file')
+       )));
+    
+    setFileRequested(isFileRequest);
+    
+    // Check for forms
+    const hasFormFields = lastMessage.form_fields && lastMessage.form_fields.length > 0;
+    const isFormNode = lastMessage.node_type === 'google_sheet' || lastMessage.type === 'form';
+    const hasFormInContent = lastMessage.content && lastMessage.content.form_fields;
+
+    if (hasFormFields || isFormNode || hasFormInContent) {
+      const fields = lastMessage.form_fields || 
+                   lastMessage.content?.form_fields || 
+                   [];
+      
+      if (fields.length > 0) {
+        setFormFields(fields);
+        setShowForm(true);
+        setCurrentFormNodeId(lastMessage.node_id || currentNodeId);
+        
+        // Initialize form data
+        const initialFormData = {};
+        fields.forEach(field => {
+          const fieldKey = field.attributeName || field.attribute_name || field.name;
+          initialFormData[fieldKey] = formData[fieldKey] || '';
+        });
+        setFormData(initialFormData);
+      }
+    } else {
+      // Only hide form if we're not in the middle of a form interaction
+      if (!lastMessage.form_fields && !lastMessage.content?.form_fields) {
+        setShowForm(false);
+      }
+    }
+  }, [transcript, currentNodeId, formData]);
+
+  // Reset upload success message
   useEffect(() => {
     if (uploadSuccess) {
       const timer = setTimeout(() => {
         setUploadSuccess(false);
-      }, 500);
-      
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [uploadSuccess]);
 
+  // Fetch initial greeting
   useEffect(() => {
     const fetchGreeting = async () => {
+      if (!sessionId) return;
+      
       setRunning(true);
       try {
         const { data } = await API.post(`/chatbots/${botId}/run/`, {
@@ -111,402 +115,389 @@ export default function TestModal({ botId, onClose }) {
           active_path_id: null,
           session_id: sessionId,
         });
-        await addBotMessagesWithDelay(data?.message?.transcript || []);
-        setCurrentNodeId(data?.message?.current_node_id ?? null);
-        setActivePathId(data?.active_path_id ?? null);
-      } catch {
-        setTranscript((prev) => {
-          const exists = prev.some(
-            (m) => m.from === 'bot' && m.text === 'Welcome! How can I help you today?'
-          );
+        
+        if (data?.message) {
+          await processAndAddMessages(data.message.transcript || []);
+          setCurrentNodeId(data.message.current_node_id ?? null);
+          setActivePathId(data.active_path_id ?? null);
+        } else if (data?.transcript) {
+          await processAndAddMessages(data.transcript);
+          setCurrentNodeId(data.current_node_id ?? null);
+          setActivePathId(data.active_path_id ?? null);
+        }
+      } catch (error) {
+        console.error('Error fetching greeting:', error);
+        // Fallback welcome message
+        setTranscript(prev => {
+          const exists = prev.some(m => m.from === 'bot' && m.text.includes('Welcome'));
           if (exists) return prev;
-          return [
-            ...prev,
-            {
-              from: 'bot',
-              type: 'text',
-              text: 'Welcome! How can I help you today?',
-              timestamp: new Date().toISOString(),
-            },
-          ];
+          return [...prev, {
+            from: 'bot',
+            type: 'text',
+            text: 'Welcome! How can I help you today?',
+            timestamp: new Date().toISOString(),
+            id: `welcome-${Date.now()}`
+          }];
         });
       } finally {
         setRunning(false);
       }
     };
-    
-    if (sessionId) {
-      fetchGreeting();
-    }
+
+    fetchGreeting();
   }, [botId, sessionId]);
 
-  const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  const addBotMessagesWithDelay = async (messages) => {
-    for (const msg of messages || []) {
-      const processedMsg = { ...msg };
-      if (msg.type === 'image') {
-        processedMsg.url =
-          msg.image ||
-          msg.file ||
-          msg.file_content ||
-          msg.file_url ||
-          (msg.content?.startsWith('data:image') ? msg.content : null);
+  // Process a single message
+  const processMessage = (msg) => {
+    if (!msg || typeof msg !== 'object') return null;
 
+    const processedMsg = { 
+      ...msg,
+      id: msg.id || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: msg.timestamp || new Date().toISOString()
+    };
+
+    // Add FAQ styling
+    if (msg.is_faq) {
+      processedMsg.className = 'faq-response';
+    }
+
+    // Process different message types
+    switch (msg.type) {
+      case 'image':
+        processedMsg.url = msg.image || msg.file || msg.file_content || msg.file_url || 
+                          (msg.content?.startsWith('data:image') ? msg.content : null);
         processedMsg.width = msg.width || 200;
         processedMsg.height = msg.height || 150;
-
+        
         if (!processedMsg.url) {
           processedMsg.type = 'text';
           processedMsg.text = '[Image not available]';
         }
-      }
-      if (msg.type === 'file') {
-        processedMsg.url =
-          msg.file ||
-          msg.file_content ||
-          msg.file_url ||
-          (msg.content?.startsWith('data:') ? msg.content : null);
-      }
-      if (msg.type === 'message_with_options') {
-        processedMsg.options = msg.options || 
-                              msg.choices || 
-                              msg.buttons || 
-                              (msg.content && typeof msg.content === 'object' ? msg.content.options : []) || 
-                              [];
-        
-        if (!Array.isArray(processedMsg.options)) {
-          processedMsg.options = [processedMsg.options];
-        }
+        break;
+
+      case 'file':
+        processedMsg.url = msg.file || msg.file_content || msg.file_url || 
+                          (msg.content?.startsWith('data:') ? msg.content : null);
+        processedMsg.name = msg.name || 'File';
+        break;
+
+      case 'message_with_options':
+        processedMsg.options = Array.isArray(msg.options) ? msg.options : 
+                              Array.isArray(msg.choices) ? msg.choices :
+                              Array.isArray(msg.buttons) ? msg.buttons :
+                              Array.isArray(msg.content?.options) ? msg.content.options : [];
         
         processedMsg.optionsDisplayStyle = msg.options_display_style || 
                                           msg.optionsDisplayStyle || 
                                           msg.display_style || 
                                           'vertical-buttons';
         
-        if (!processedMsg.text && msg.content && typeof msg.content === 'object') {
-          processedMsg.text = msg.content.text || msg.content.message || 'Please choose an option:';
-        } else if (!processedMsg.text) {
-          processedMsg.text = 'Please choose an option:';
+        if (!processedMsg.text) {
+          processedMsg.text = msg.content?.text || msg.content?.message || 'Please choose an option:';
         }
-      }
-      if (msg.node_type === 'google_sheet' || msg.type === 'form' || msg.form_fields) {
-        processedMsg.form_fields = msg.form_fields || 
-                                  msg.content?.form_fields || 
-                                  msg.data?.form_fields || 
-                                  [];
-        processedMsg.node_id = msg.node_id || currentNodeId;
-        processedMsg.type = 'form'; 
-        console.log('Processed form message:', processedMsg);
-      }
+        break;
 
-      setTranscript((prev) => {
-        const messageId = processedMsg.url 
-          ? `media-${processedMsg.url}-${Date.now()}-${Math.random()}`
-          : `text-${processedMsg.text}-${Date.now()}-${Math.random()}`;
+      default:
+        // Handle form messages
+        if (msg.node_type === 'google_sheet' || msg.type === 'form' || msg.form_fields) {
+          processedMsg.form_fields = msg.form_fields || msg.content?.form_fields || [];
+          processedMsg.type = 'form';
+          if (!processedMsg.text) {
+            processedMsg.text = 'Please fill out the form below:';
+          }
+        }
+        break;
+    }
+
+    // Ensure text is properly set
+    if (!processedMsg.text && processedMsg.content && typeof processedMsg.content === 'string') {
+      processedMsg.text = processedMsg.content;
+    }
+
+    return processedMsg;
+  };
+
+  // FIXED: Better duplicate detection that doesn't filter legitimate messages
+  const processAndAddMessages = async (messages) => {
+    if (!messages || !Array.isArray(messages)) return;
+
+    for (const msg of messages) {
+      const processedMsg = processMessage(msg);
+      if (!processedMsg) continue;
+
+      setTranscript(prev => {
+        // Much less aggressive duplicate checking
+        // Only check by exact ID match, or same text from same sender in last 2 messages
+        const recentMessages = prev.slice(-2);
+        const exists = recentMessages.some(existing => 
+          existing.id === processedMsg.id || 
+          (
+            existing.text === processedMsg.text && 
+            existing.from === processedMsg.from &&
+            Date.now() - new Date(existing.timestamp).getTime() < 5000 // Within 5 seconds
+          )
+        );
         
-        const recentMessages = prev.slice(-10);
-        const exists = recentMessages.some((m) => {
-          if (processedMsg.type === 'image') {
-            return m.type === 'image' && m.url === processedMsg.url;
-          }
-          if (processedMsg.type === 'file') {
-            return m.type === 'file' && m.url === processedMsg.url;
-          }
-          if (processedMsg.type === 'message_with_options') {
-            return (
-              m.type === 'message_with_options' &&
-              m.text === processedMsg.text &&
-              JSON.stringify(m.options) === JSON.stringify(processedMsg.options)
-            );
-          }
-          if (processedMsg.type === 'form') {
-            return (
-              m.type === 'form' &&
-              JSON.stringify(m.form_fields) === JSON.stringify(processedMsg.form_fields)
-            );
-          }
-          return m.type === processedMsg.type && m.text === processedMsg.text;
-        });
-
-        if (exists) return prev;
-
-        return [
-          ...prev,
-          { 
-            ...processedMsg, 
-            id: messageId,
-            timestamp: processedMsg.timestamp || new Date().toISOString() 
-          },
-        ];
+        if (exists) {
+          console.log('Duplicate message filtered:', processedMsg.text);
+          return prev;
+        }
+        
+        console.log('Adding new message:', processedMsg.text);
+        return [...prev, processedMsg];
       });
 
       await delay(400);
     }
   };
 
+  // Handle option selection
   const handleOptionSelect = async (option) => {
     if (running) return;
     
     setSelectedOption(option);
     setRunning(true);
-    setTranscript((prev) => [
-      ...prev,
-      { 
-        from: 'user', 
-        type: 'text', 
-        text: option, 
-        timestamp: new Date().toISOString(),
-        id: `user-option-${Date.now()}-${Math.random()}`
-      },
-    ]);
+    
+    // Add user's selection to transcript
+    setTranscript(prev => [...prev, {
+      from: 'user',
+      type: 'text',
+      text: option,
+      timestamp: new Date().toISOString(),
+      id: `user-option-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+    }]);
 
     try {
-      const { data } = await API.post(`/chatbots/${botId}/run/`, { 
-        user_inputs: { input: option }, 
+      const { data } = await API.post(`/chatbots/${botId}/run/`, {
+        user_inputs: { input: option },
         current_node_id: currentNodeId,
         active_path_id: activePathId,
         session_id: sessionId
       });
-      if (data?.message) {
-        await addBotMessagesWithDelay(data.message.transcript || []);
+
+      // Handle different response formats
+      if (data?.message?.transcript) {
+        await processAndAddMessages(data.message.transcript);
         setCurrentNodeId(data.message.current_node_id ?? null);
         setActivePathId(data.active_path_id ?? null);
-        
-        if (data.uploaded_file || data.message.uploaded_file) {
-          setUploadSuccess(true);
-        }
       } else if (data?.transcript) {
-        await addBotMessagesWithDelay(data.transcript);
+        await processAndAddMessages(data.transcript);
         setCurrentNodeId(data.current_node_id ?? null);
         setActivePathId(data.active_path_id ?? null);
-        
-        if (data.uploaded_file) {
-          setUploadSuccess(true);
-        }
-      } else {
-        console.warn('Unexpected response format:', data);
+      } else if (data?.message) {
+        // Handle single message response
+        await processAndAddMessages([data.message]);
+        setCurrentNodeId(data.message.current_node_id ?? null);
+        setActivePathId(data.active_path_id ?? null);
+      }
+
+      if (data?.uploaded_file || data?.message?.uploaded_file) {
+        setUploadSuccess(true);
       }
     } catch (error) {
       console.error('Error sending option:', error);
-      setTranscript((prev) => [
-        ...prev,
-        { 
-          from: 'bot', 
-          type: 'text', 
-          text: 'Error occurred while processing your selection', 
-          timestamp: new Date().toISOString(),
-          id: `error-${Date.now()}-${Math.random()}`
-        },
-      ]);
+      setTranscript(prev => [...prev, {
+        from: 'bot',
+        type: 'text',
+        text: 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date().toISOString(),
+        id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+      }]);
     } finally {
       setRunning(false);
       setSelectedOption(null);
     }
   };
 
+  // Handle form submission
   const handleFormSubmit = async (e) => {
-  e.preventDefault();
-  if (running) return;
+    e.preventDefault();
+    if (running) return;
 
-  setRunning(true);
-
-  try {
-    const userMessage = "Form submitted";
-    setTranscript((prev) => [
-      ...prev,
-      { 
-        from: 'user', 
-        type: 'text', 
-        text: userMessage, 
-        timestamp: new Date().toISOString(),
-        id: `user-form-${Date.now()}-${Math.random()}`,
-        form_data: formData
-      },
-    ]);
-    const payload = {
-      user_inputs: { 
-        input: userMessage,
-        form_data: formData 
-      }, 
-      current_node_id: currentFormNodeId || currentNodeId,
-      active_path_id: activePathId,
-      session_id: sessionId
-    };
-
-    console.log('Sending form data:', payload);
-
-    const { data } = await API.post(`/chatbots/${botId}/run/`, payload);
-    const processPlaceholders = (messages) => {
-      return messages.map(msg => {
-        if (msg.text && typeof msg.text === 'string') {
-          let processedText = msg.text;
-          Object.keys(formData).forEach(attribute => {
-            const placeholder = `{{${attribute}}}`;
-            const value = formData[attribute];
-            processedText = processedText.replace(new RegExp(placeholder, 'g'), value);
-          });
-          return { ...msg, text: processedText };
-        }
-        return msg;
-      });
-    };
-
-    if (data?.message?.transcript) {
-      const processedTranscript = processPlaceholders(data.message.transcript);
-      await addBotMessagesWithDelay(processedTranscript);
-      setCurrentNodeId(data.message.current_node_id ?? null);
-      setActivePathId(data.active_path_id ?? null);
-    } else if (data?.transcript) {
-      const processedTranscript = processPlaceholders(data.transcript);
-      await addBotMessagesWithDelay(processedTranscript);
-      setCurrentNodeId(data.current_node_id ?? null);
-      setActivePathId(data.active_path_id ?? null);
+    // Validate required fields
+    const missingFields = formFields.filter(field => {
+      const fieldKey = field.attributeName || field.attribute_name || field.name;
+      return field.required && !formData[fieldKey]?.toString().trim();
+    });
+    
+    if (missingFields.length > 0) {
+      alert(`Please fill in required fields: ${missingFields.map(f => f.label || f.name).join(', ')}`);
+      return;
     }
-    setShowForm(false);
-    setFormFields([]);
-    setFormData({});
-    setMessage('');
 
-  } catch (error) {
-    console.error('Error submitting form:', error);
-    setTranscript((prev) => [
-      ...prev,
-      { 
-        from: 'bot', 
-        type: 'text', 
-        text: 'Error occurred while processing your form', 
-        timestamp: new Date().toISOString(),
-        id: `error-${Date.now()}-${Math.random()}`
-      },
-    ]);
-  } finally {
-    setRunning(false);
-  }
-  };
-
-  const handleFormInputChange = (fieldName, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [fieldName]: value
-    }));
-  };
-
-  const clearAttachment = () => {
-    setFile(null);
-    if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
-    setFilePreviewUrl(null);
-  };
-
-  const onPickFile = (e) => {
-    if (!fileRequested) return; 
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setFile(f);
-    if (f.type.startsWith('image/')) setFilePreviewUrl(URL.createObjectURL(f));
-    else setFilePreviewUrl(null);
-  };
-
-  const sendMessage = async () => {
-    if (running || (!message.trim() && !file)) return;
     setRunning(true);
 
-    if (message.trim())
-      setTranscript((prev) => [
-        ...prev,
-        { 
-          from: 'user', 
-          type: 'text', 
-          text: message, 
-          timestamp: new Date().toISOString(),
-          id: `user-${Date.now()}-${Math.random()}`
+    try {
+      const userMessage = "Form submitted";
+      setTranscript(prev => [...prev, {
+        from: 'user',
+        type: 'text',
+        text: userMessage,
+        timestamp: new Date().toISOString(),
+        id: `form-submit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        form_data: formData
+      }]);
+      
+      const payload = {
+        user_inputs: { 
+          input: userMessage,
+          form_data: formData 
         },
-      ]);
+        current_node_id: currentFormNodeId || currentNodeId,
+        active_path_id: activePathId,
+        session_id: sessionId
+      };
 
+      const { data } = await API.post(`/chatbots/${botId}/run/`, payload);
+      
+      // Process placeholders in response
+      const processPlaceholders = (messages) => {
+        return messages.map(msg => {
+          if (msg.text && typeof msg.text === 'string') {
+            let processedText = msg.text;
+            Object.keys(formData).forEach(attribute => {
+              const placeholder = `{{${attribute}}}`;
+              const value = formData[attribute];
+              if (value) {
+                processedText = processedText.replace(new RegExp(placeholder, 'g'), value);
+              }
+            });
+            return { ...msg, text: processedText };
+          }
+          return msg;
+        });
+      };
+
+      if (data?.message?.transcript) {
+        const processedTranscript = processPlaceholders(data.message.transcript);
+        await processAndAddMessages(processedTranscript);
+        setCurrentNodeId(data.message.current_node_id ?? null);
+        setActivePathId(data.active_path_id ?? null);
+      } else if (data?.transcript) {
+        const processedTranscript = processPlaceholders(data.transcript);
+        await processAndAddMessages(processedTranscript);
+        setCurrentNodeId(data.current_node_id ?? null);
+        setActivePathId(data.active_path_id ?? null);
+      }
+      
+      // Reset form
+      setShowForm(false);
+      setFormFields([]);
+      setFormData({});
+      setMessage('');
+
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      setTranscript(prev => [...prev, {
+        from: 'bot',
+        type: 'text',
+        text: 'Error occurred while processing your form. Please try again.',
+        timestamp: new Date().toISOString(),
+        id: `form-error-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+      }]);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  // Send message to backend
+  const sendMessage = async () => {
+    if (running || (!message.trim() && !file)) return;
+    
+    setRunning(true);
+
+    // Add user message to transcript
+    if (message.trim()) {
+      setTranscript(prev => [...prev, {
+        from: 'user',
+        type: 'text',
+        text: message,
+        timestamp: new Date().toISOString(),
+        id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+      }]);
+    }
+
+    // Add file to transcript if present
     if (file) {
-      setTranscript((prev) => [
-        ...prev,
-        file.type.startsWith('image/')
-          ? { 
-              from: 'user', 
-              type: 'image', 
-              url: filePreviewUrl, 
-              timestamp: new Date().toISOString(),
-              id: `user-image-${Date.now()}-${Math.random()}`
-            }
-          : { 
-              from: 'user', 
-              type: 'file', 
-              name: file.name, 
-              size: file.size, 
-              timestamp: new Date().toISOString(),
-              id: `user-file-${Date.now()}-${Math.random()}`
-            },
-      ]);
+      setTranscript(prev => [...prev, file.type.startsWith('image/') ? {
+        from: 'user',
+        type: 'image',
+        url: filePreviewUrl,
+        timestamp: new Date().toISOString(),
+        id: `user-image-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+      } : {
+        from: 'user',
+        type: 'file',
+        name: file.name,
+        size: file.size,
+        timestamp: new Date().toISOString(),
+        id: `user-file-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+      }]);
     }
 
     try {
-      let data;
+      let response;
+      
       if (file) {
-        const form = new FormData();
-        form.append('user_inputs[input]', message || '');
-        if (currentNodeId) form.append('current_node_id', currentNodeId);
-        if (activePathId) form.append('active_path_id', activePathId);
-        form.append('session_id', sessionId);
-        form.append('file', file);
+        const formData = new FormData();
+        formData.append('user_inputs[input]', message || '');
+        if (currentNodeId) formData.append('current_node_id', currentNodeId);
+        if (activePathId) formData.append('active_path_id', activePathId);
+        formData.append('session_id', sessionId);
+        formData.append('file', file);
         
-        ({ data } = await API.post(`/chatbots/${botId}/run/`, form, { 
-          headers: { 'Content-Type': 'multipart/form-data' } 
-        }));
+        response = await API.post(`/chatbots/${botId}/run/`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
       } else {
-        ({ data } = await API.post(`/chatbots/${botId}/run/`, { 
-          user_inputs: { input: message }, 
+        response = await API.post(`/chatbots/${botId}/run/`, {
+          user_inputs: { input: message },
           current_node_id: currentNodeId,
           active_path_id: activePathId,
           session_id: sessionId
-        }));
+        });
       }
 
-      if (data?.message) {
-        await addBotMessagesWithDelay(data.message.transcript || []);
+      const { data } = response;
+
+      // Handle different response formats
+      if (data?.message?.transcript) {
+        await processAndAddMessages(data.message.transcript);
         setCurrentNodeId(data.message.current_node_id ?? null);
         setActivePathId(data.active_path_id ?? null);
-        
-        if (data.uploaded_file || data.message.uploaded_file) {
-          setUploadSuccess(true);
-        }
       } else if (data?.transcript) {
-        await addBotMessagesWithDelay(data.transcript);
+        await processAndAddMessages(data.transcript);
         setCurrentNodeId(data.current_node_id ?? null);
         setActivePathId(data.active_path_id ?? null);
-        
-        if (data.uploaded_file) {
-          setUploadSuccess(true);
-        }
+      } else if (data?.message) {
+        await processAndAddMessages([data.message]);
+        setCurrentNodeId(data.message.current_node_id ?? null);
+        setActivePathId(data.active_path_id ?? null);
+      }
+
+      if (data?.uploaded_file || data?.message?.uploaded_file) {
+        setUploadSuccess(true);
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      setTranscript((prev) => [
-        ...prev,
-        { 
-          from: 'bot', 
-          type: 'text', 
-          text: 'Error occurred while processing your request', 
-          timestamp: new Date().toISOString(),
-          id: `error-${Date.now()}-${Math.random()}`
-        },
-      ]);
+      setTranscript(prev => [...prev, {
+        from: 'bot',
+        type: 'text',
+        text: 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date().toISOString(),
+        id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+      }]);
     } finally {
       setRunning(false);
       setMessage('');
       clearAttachment();
-      
-      if (file) {
-        setFileRequested(false);
-      }
     }
   };
 
+  // Handle Enter key press
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -514,20 +505,59 @@ export default function TestModal({ botId, onClose }) {
     }
   };
 
-  const formatTimestamp = (iso) => {
-    const date = new Date(iso);
-    return isNaN(date) ? '' : date.toLocaleString();
+  // Clear file attachment
+  const clearAttachment = () => {
+    setFile(null);
+    if (filePreviewUrl) {
+      URL.revokeObjectURL(filePreviewUrl);
+    }
+    setFilePreviewUrl(null);
   };
 
+  // Handle file selection
+  const onPickFile = (e) => {
+    if (!fileRequested || running) return;
+    
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+    
+    setFile(selectedFile);
+    if (selectedFile.type.startsWith('image/')) {
+      setFilePreviewUrl(URL.createObjectURL(selectedFile));
+    } else {
+      setFilePreviewUrl(null);
+    }
+  };
+
+  // Handle form input changes
+  const handleFormInputChange = (fieldName, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
+  };
+
+  // Format timestamp
+  const formatTimestamp = (isoString) => {
+    try {
+      const date = new Date(isoString);
+      return isNaN(date.getTime()) ? '' : date.toLocaleTimeString();
+    } catch {
+      return '';
+    }
+  };
+
+  // Check if showing options
   const isShowingOptions = () => {
     if (transcript.length === 0) return false;
     const lastMessage = transcript[transcript.length - 1];
-    return lastMessage.from === 'bot' && lastMessage.type === 'message_with_options';
+    return lastMessage.from === 'bot' && lastMessage.type === 'message_with_options' && lastMessage.options?.length > 0;
   };
 
+  // Render options based on display style
   const renderOptions = (message) => {
     if (!message.options || message.options.length === 0) {
-      return <div className="no-options">No options available</div>;
+      return null;
     }
 
     const displayStyle = message.optionsDisplayStyle || 'vertical-buttons';
@@ -583,8 +613,9 @@ export default function TestModal({ botId, onClose }) {
     }
   };
 
+  // Render form field based on type
   const renderFormField = (field) => {
-    const fieldKey = field.attributeName || field.attribute_name || field.name || field.id;
+    const fieldKey = field.attributeName || field.attribute_name || field.name;
     const commonProps = {
       value: formData[fieldKey] || '',
       onChange: (e) => handleFormInputChange(fieldKey, e.target.value),
@@ -596,7 +627,7 @@ export default function TestModal({ botId, onClose }) {
 
     switch (field.type) {
       case 'textarea':
-        return <textarea {...commonProps} rows={3} />;
+        return <textarea {...commonProps} rows={4} />;
       
       case 'select':
         return (
@@ -613,7 +644,7 @@ export default function TestModal({ botId, onClose }) {
           <label className="checkbox-field">
             <input
               type="checkbox"
-              checked={formData[fieldKey] || false}
+              checked={!!formData[fieldKey]}
               onChange={(e) => handleFormInputChange(fieldKey, e.target.checked)}
               disabled={running}
             />
@@ -671,54 +702,71 @@ export default function TestModal({ botId, onClose }) {
                 </div>
               </div>
             </div>
+            {/* <button className="close-button" onClick={onClose}>×</button> */}
           </div>
 
           <div className="chat-body" ref={scrollRef}>
             {transcript
               .filter((m) => m.type !== 'path_trigger')
               .map((m) => (
-              <div key={m.id} className={`message ${m.from === 'bot' ? 'bot-message' : m.from === 'system' ? 'system-message' : 'user-message'} ${m.className || ''}`}>
-                {m.from === 'bot' && <div className="message-avatar">🤖</div>}
-                {m.from === 'system' && <div className="message-avatar">⚙️</div>}
-                <div className="message-content">
-                  {m.type === 'image' && m.url ? (
-                    <img
-                      src={m.url}
-                      alt="attachment"
-                      className="message-image"
-                      style={{
-                        width: m.width || 300,
-                        height: m.height || 150,
-                        objectFit: 'contain',
-                        cursor: 'pointer',
-                      }}
-                      onClick={() => setFullscreenImage(m.url)}
-                    />
-                  ) : m.type === 'file' && m.url ? (
-                    <a href={m.url} target="_blank" rel="noopener noreferrer" className="file-chip">📎 {m.name || 'File'}</a>
-                  ) : m.type === 'file' ? (
-                    <span className="file-chip">📎 {m.name || 'File'}</span>
-                  ) : m.type === 'message_with_options' ? (
-                    <div className="message-with-options">
-                      <div className="options-message-text" dangerouslySetInnerHTML={{ __html: m.text }} />
-                      {renderOptions(m)}
-                    </div>
-                  ) : m.type === 'form' ? (
-                    <div className="form-message">
-                      <div className="form-message-text" dangerouslySetInnerHTML={{ __html: m.text }} />
-                      Please fill out the form:
-                    </div>
-                  ) : (
-                    <span dangerouslySetInnerHTML={{ __html: m.text }} />
-                  )}
-                  <div className="message-timestamp">{formatTimestamp(m.timestamp)}</div>
+                <div key={m.id} className={`message ${m.from === 'bot' ? 'bot-message' : m.from === 'system' ? 'system-message' : 'user-message'} ${m.className || ''}`}>
+                  {m.from === 'bot' && <div className="message-avatar">🤖</div>}
+                  {m.from === 'system' && <div className="message-avatar">⚙️</div>}
+                  
+                  <div className="message-content">
+                    {m.type === 'image' && m.url ? (
+                      <img
+                        src={m.url}
+                        alt="attachment"
+                        className="message-image"
+                        style={{
+                          width: m.width || 300,
+                          height: m.height || 150,
+                          objectFit: 'contain',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => setFullscreenImage(m.url)}
+                      />
+                    ) : m.type === 'file' && m.url ? (
+                      <a href={m.url} target="_blank" rel="noopener noreferrer" className="file-chip">
+                        📎 {m.name || 'File'}
+                      </a>
+                    ) : m.type === 'file' ? (
+                      <span className="file-chip">📎 {m.name || 'File'}</span>
+                    ) : m.type === 'message_with_options' ? (
+                      <div className="message-with-options">
+                        <div className="options-message-text" dangerouslySetInnerHTML={{ __html: m.text }} />
+                        {renderOptions(m)}
+                      </div>
+                    ) : m.type === 'form' ? (
+                      <div className="form-message">
+                        <div className="form-message-text" dangerouslySetInnerHTML={{ __html: m.text }} />
+                      </div>
+                    ) : (
+                      <span dangerouslySetInnerHTML={{ __html: m.text }} />
+                    )}
+                    <div className="message-timestamp">{formatTimestamp(m.timestamp)}</div>
+                  </div>
+                  
+                  {m.from === 'user' && <div className="message-avatar">👤</div>}
                 </div>
-                {m.from === 'user' && <div className="message-avatar">👤</div>}
+              ))}
+              
+            {running && (
+              <div className="message bot-message">
+                <div className="message-avatar">🤖</div>
+                <div className="message-content">
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
               </div>
-            ))}
+            )}
           </div>
 
-          {/*Enhanced Google Sheet  */}
+          {/* Form Container */}
           {showForm && formFields.length > 0 && (
             <div className="form-container">
               <form onSubmit={handleFormSubmit} className="chat-form">
@@ -727,7 +775,7 @@ export default function TestModal({ botId, onClose }) {
                 </div>
                 <div className="form-fields">
                   {formFields.map((field, index) => {
-                    const fieldKey = field.attributeName || field.attribute_name || field.name || field.id;
+                    const fieldKey = field.attributeName || field.attribute_name || field.name;
                     return (
                       <div key={fieldKey || index} className="form-field">
                         <label className="form-field-label">
@@ -755,7 +803,7 @@ export default function TestModal({ botId, onClose }) {
             </div>
           )}
 
-          {/* Upload Success  */}
+          {/* Upload Success Toast */}
           {uploadSuccess && (
             <div className="upload-success-toast">
               <div className="toast-content">
@@ -765,16 +813,17 @@ export default function TestModal({ botId, onClose }) {
             </div>
           )}
 
+          {/* File Request Banner */}
           {fileRequested && (
             <div className="file-request-banner">
               <div className="banner-content">
                 <span className="banner-icon">📎</span>
-                <span>Bot requesting a file. Attach one below and press Send.</span>
+                <span>Bot is requesting a file. Attach one below and press Send.</span>
               </div>
             </div>
           )}
 
-          {/* Show options banner when options are available */}
+          {/* Options Banner */}
           {isShowingOptions() && (
             <div className="options-banner">
               <div className="banner-content">
@@ -784,6 +833,7 @@ export default function TestModal({ botId, onClose }) {
             </div>
           )}
 
+          {/* Chat Input */}
           {!showForm && (
             <div className={`chat-input-container ${fileRequested ? 'file-requested' : ''}`}>
               <div className="input-wrapper">
@@ -805,58 +855,36 @@ export default function TestModal({ botId, onClose }) {
                   />
                   📎
                 </label>
-                <button onClick={sendMessage} disabled={running || (!message.trim() && !file)} className="send-button">
-                  Send
+                <button 
+                  onClick={sendMessage} 
+                  disabled={running || (!message.trim() && !file)} 
+                  className="send-button"
+                >
+                  {running ? 'Sending...' : 'Send'}
                 </button>
               </div>
 
-              {file && <div className="attachment-row">
-                {filePreviewUrl ? <img src={filePreviewUrl} alt="preview" className="attachment-preview"/> : <span className="attachment-chip">📎 {file.name}</span>}
-                <button className="attachment-remove" onClick={clearAttachment}>Remove</button>
-              </div>}
+              {file && (
+                <div className="attachment-row">
+                  {filePreviewUrl ? (
+                    <img src={filePreviewUrl} alt="preview" className="attachment-preview"/>
+                  ) : (
+                    <span className="attachment-chip">📎 {file.name}</span>
+                  )}
+                  <button className="attachment-remove" onClick={clearAttachment}>Remove</button>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Fullscreen image  */}
+      {/* Fullscreen Image Overlay */}
       {fullscreenImage && (
-        <div
-          className="fullscreen-overlay"
-          onClick={() => setFullscreenImage(null)}
-          style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 9999,
-          }}
-        >
-          <div style={{ position: 'relative' }}>
-            <img
-              src={fullscreenImage}
-              alt="fullscreen"
-              style={{ maxHeight: '90vh', maxWidth: '90vw', borderRadius: 8 }}
-              onClick={(e) => e.stopPropagation()} 
-            />
-            <button
-              onClick={() => setFullscreenImage(null)}
-              style={{
-                position: 'absolute',
-                top: 10,
-                right: 10,
-                background: 'rgba(10, 255, 83, 0.7)',
-                border: 'none',
-                borderRadius: '50%',
-                width: 30,
-                height: 30,
-                fontSize: 18,
-                cursor: 'pointer',
-              }}
-              aria-label="Close image"
-            >
+        <div className="fullscreen-overlay" onClick={() => setFullscreenImage(null)}>
+          <div className="fullscreen-content" onClick={(e) => e.stopPropagation()}>
+            <img src={fullscreenImage} alt="fullscreen" />
+            <button className="close-fullscreen" onClick={() => setFullscreenImage(null)}>
               ×
             </button>
           </div>

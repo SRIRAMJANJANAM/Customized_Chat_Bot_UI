@@ -433,7 +433,7 @@ function BotBuilderPage() {
           </svg>
           Back to Bots
         </button>
-        <h2>Chatbot Builder</h2>
+        <h2>ORAI</h2>
         <ThemeToggle />
       </header>
       <Builder botId={botId} />

@@ -53,3 +53,26 @@ export const saveGraph = async (chatbotId, nodes, edges, files = {}) => {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };
+
+// UPDATED FAQ API Functions - Use the new URL pattern
+export const getFaqs = async (chatbotId) => {
+  return await API.get(`/chatbots/${chatbotId}/manage-faqs/`);
+};
+
+export const createFaq = async (chatbotId, faqData) => {
+  return await API.post(`/chatbots/${chatbotId}/manage-faqs/`, faqData);
+};
+
+export const updateFaq = async (chatbotId, faqId, faqData) => {
+  return await API.put(`/chatbots/${chatbotId}/manage-faqs/${faqId}/`, faqData);
+};
+
+export const deleteFaq = async (chatbotId, faqId) => {
+  return await API.delete(`/chatbots/${chatbotId}/manage-faqs/${faqId}/`);
+};
+
+export const checkFaq = async (chatbotId, userInput) => {
+  return await API.post(`/chatbots/${chatbotId}/check_faq/`, {
+    user_input: userInput
+  });
+};
