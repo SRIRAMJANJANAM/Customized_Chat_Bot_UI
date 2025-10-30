@@ -164,6 +164,19 @@ export default function TestModal({ botId, onClose }) {
       processedMsg.className = 'faq-response';
     }
 
+    // Add fallback response styling for "I'm sorry" messages
+    if (msg.text && (
+        msg.text.includes("I'm sorry") || 
+        msg.text.includes("I didn't understand") ||
+        msg.text.includes("I don't understand") ||
+        msg.text.includes("I'm not sure") ||
+        msg.text.includes("I apologize") ||
+        msg.text.includes("I'm still learning") ||
+        msg.text.includes("I didn't catch that")
+    )) {
+      processedMsg.className = processedMsg.className ? `${processedMsg.className} fallback-response` : 'fallback-response';
+    }
+
     // Process different message types
     switch (msg.type) {
       case 'image':

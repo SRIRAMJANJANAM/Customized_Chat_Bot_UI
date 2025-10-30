@@ -11,13 +11,33 @@ const formatMessageText = (text) => {
     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code>$1</code>');
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/---/g, '<hr>');
 
   formattedText = formattedText
-    .replace(/\n/g, '<br>')
-    .replace(/<br>\s*<br>/g, '</p><p>');
-  
-  return `<p>${formattedText}</p>`;
+    .split('\n')
+    .map(line => {
+      line = line.trim();
+      if (!line) return '</p><p>';
+      if (line.startsWith('<')) return line;
+      return line + '<br>';
+    })
+    .join('');
+
+  if (!formattedText.startsWith('<p>')) {
+    formattedText = '<p>' + formattedText;
+  }
+  if (!formattedText.endsWith('</p>')) {
+    formattedText = formattedText + '</p>';
+  }
+
+  formattedText = formattedText
+    .replace(/<p><\/p>/g, '')
+    .replace(/<p><br><\/p>/g, '')
+    .replace(/<p><p>/g, '<p>')
+    .replace(/<\/p><\/p>/g, '</p>');
+
+  return formattedText;
 };
 
 const extractOptionsFromText = (text) => {
@@ -50,6 +70,10 @@ const FormattedMessage = ({ message }) => {
   const messageOptions = message?.options || [];
   const pathTriggered = message?.path_triggered || '';
   const timestamp = message?.timestamp || '';
+  const isFAQ = message?.is_faq || false;
+  const matchedQuestion = message?.matched_question || '';
+  const formFields = message?.form_fields || [];
+  const fileContent = message?.file_content || '';
   
   const formattedText = formatMessageText(messageText);
   const extractedOptions = extractOptionsFromText(messageText);
@@ -59,31 +83,178 @@ const FormattedMessage = ({ message }) => {
   
   const optionsToDisplay = messageOptions || extractedOptions || [];
 
+  // Enhanced image URL handling
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    
+    console.log('🔍 Original image URL:', url);
+    
+    // If it's already a full URL, return as is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // If it's a relative path starting with /media/, construct full URL
+    if (url.startsWith('/media/')) {
+      const fullUrl = `${window.location.origin}${url}`;
+      console.log('🔍 Constructed media URL:', fullUrl);
+      return fullUrl;
+    }
+    
+    // If it's just a filename or relative path without /media/
+    if (url.startsWith('/')) {
+      const fullUrl = `${window.location.origin}${url}`;
+      console.log('🔍 Constructed absolute URL:', fullUrl);
+      return fullUrl;
+    }
+    
+    // Default case - assume it's in media folder
+    const fullUrl = `${window.location.origin}/media/${url}`;
+    console.log('🔍 Constructed default media URL:', fullUrl);
+    return fullUrl;
+  };
+
+  // Check if file_content is a valid base64 image (should be long enough and contain data:image/)
+  const isValidBase64Image = (content) => {
+    if (!content) return false;
+    
+    // Check if it's a proper base64 image (starts with data:image/ and is reasonably long)
+    const isProperBase64 = content.startsWith('data:image/') && content.length > 100;
+    
+    console.log('🔍 Base64 validation:', {
+      contentLength: content.length,
+      startsWithDataImage: content.startsWith('data:image/'),
+      isValid: isProperBase64,
+      contentPreview: content.substring(0, 100) + '...'
+    });
+    
+    return isProperBase64;
+  };
+
+  // Handle image source - only use file_content if it's valid
+  const getImageSource = () => {
+    // First priority: valid file_content (base64)
+    if (isValidBase64Image(fileContent)) {
+      console.log('🔍 Using valid base64 file_content');
+      return fileContent;
+    } else if (fileContent) {
+      console.log('🔍 File content exists but is invalid:', {
+        length: fileContent.length,
+        preview: fileContent
+      });
+    }
+    
+    // Second priority: URL
+    if (messageUrl) {
+      const url = getImageUrl(messageUrl);
+      console.log('🔍 Using URL:', url);
+      return url;
+    }
+    
+    return '';
+  };
+
+  const imageSource = getImageSource();
+  const hasValidImageSource = !!imageSource;
+
   return (
-    <div className={styles.messageContent}>
-      <div 
-        className={styles.messageText}
-        dangerouslySetInnerHTML={{ __html: formattedText }}
-      />
-      
-      {messageType === 'image' && messageUrl && (
-        <img 
-          src={messageUrl} 
-          alt="Chat attachment" 
-          className={styles.chatImage}
-          onError={(e) => {
-            console.log('Image failed to load:', messageUrl);
-            e.target.style.display = 'none';
-          }}
-          onLoad={(e) => {
-            console.log('Image loaded successfully:', messageUrl);
-          }}
+    <div className={`${styles.messageContent} ${isFAQ ? styles.faqMessage : ''}`}>
+      {/* Only render formatted text for text messages */}
+      {messageType === 'text' && messageText && (
+        <div 
+          className={styles.messageText}
+          dangerouslySetInnerHTML={{ __html: formattedText }}
         />
+      )}
+      
+      {/* Handle image messages */}
+      {messageType === 'image' && (
+        <div className={styles.imageContainer}>
+          {hasValidImageSource ? (
+            <img 
+              src={imageSource} 
+              alt="Chat attachment" 
+              className={styles.chatImage}
+              onError={(e) => {
+                console.error('❌ Image failed to load:', {
+                  originalUrl: messageUrl,
+                  finalUrl: imageSource,
+                  fileContent: !!fileContent,
+                  fileContentLength: fileContent?.length || 0,
+                  fileContentValid: isValidBase64Image(fileContent),
+                  error: e
+                });
+                e.target.style.display = 'none';
+                
+                // Show fallback
+                const container = e.target.parentNode;
+                const existingFallback = container.querySelector('.imageError');
+                if (!existingFallback) {
+                  const fallback = document.createElement('div');
+                  fallback.className = styles.imageError;
+                  fallback.textContent = '📷 Image not available';
+                  container.appendChild(fallback);
+                }
+              }}
+              onLoad={(e) => {
+                console.log('✅ Image loaded successfully:', {
+                  source: isValidBase64Image(fileContent) ? 'base64' : 'URL',
+                  url: messageUrl,
+                  fileContentLength: fileContent?.length || 0
+                });
+              }}
+            />
+          ) : (
+            <div className={styles.imageError}>
+              📷 Image not available
+              <div className={styles.imageErrorDetails}>
+                {fileContent ? `Invalid file content (${fileContent.length} chars)` : 'No image source'}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Handle text messages that might have separate image URLs */}
+      {messageType === 'text' && messageUrl && !fileContent && (
+        <div className={styles.imageContainer}>
+          <img 
+            src={getImageUrl(messageUrl)} 
+            alt="Chat attachment" 
+            className={styles.chatImage}
+            onError={(e) => {
+              console.log('Image failed to load in text message:', messageUrl);
+              e.target.style.display = 'none';
+            }}
+            onLoad={(e) => {
+              console.log('Image loaded successfully in text message:', messageUrl);
+            }}
+          />
+        </div>
       )}
       
       {messageType === 'file_request' && (
         <div className={styles.fileRequest}>
           📎 File Request
+        </div>
+      )}
+      
+      {messageType === 'form' && formFields.length > 0 && (
+        <div className={styles.formContainer}>
+          <div className={styles.formLabel}>Form:</div>
+          <div className={styles.formFields}>
+            {formFields.map((field, index) => (
+              <div key={index} className={styles.formField}>
+                <label>{field.label || field.name}:</label>
+                <input 
+                  type={field.type || 'text'}
+                  placeholder={field.placeholder || ''}
+                  disabled
+                  className={styles.formInput}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       )}
       
@@ -271,10 +442,31 @@ const ChatHistoryView = ({ botId }) => {
       setSelectedChatHistory(null);
       
       const { data } = await API.get(`/chatbots/${botId}/chat_history/?session_id=${sessionId}`);
-      console.log('Chat history received:', data);
+      console.log('🔍 RAW CHAT HISTORY DATA:', data);
+      
       if (!data) {
         throw new Error('No data received from server');
       }
+      
+      // Log message details for debugging
+      if (data.messages && Array.isArray(data.messages)) {
+        console.log('📝 ALL MESSAGES:', data.messages);
+        
+        data.messages.forEach((msg, index) => {
+          console.log(`Message ${index}:`, {
+            from: msg.from,
+            type: msg.type,
+            text: msg.text,
+            textLength: msg.text?.length,
+            hasText: !!msg.text,
+            is_faq: msg.is_faq,
+            url: msg.url,
+            file_content: msg.file_content ? `Yes (${msg.file_content.length} chars)` : 'No',
+            file_content_preview: msg.file_content ? msg.file_content.substring(0, 50) + '...' : 'None'
+          });
+        });
+      }
+      
       const validatedData = {
         ...data,
         messages: Array.isArray(data.messages) ? data.messages : [],
@@ -400,6 +592,9 @@ const ChatHistoryView = ({ botId }) => {
                   <span>Started: {new Date(selectedChatHistory.started_at).toLocaleString()}</span>
                   <span>Last active: {new Date(selectedChatHistory.last_activity).toLocaleString()}</span>
                   <span>{selectedChatHistory.messages?.length || 0} messages</span>
+                  <span>
+                    {selectedChatHistory.messages?.filter(msg => msg.is_faq).length || 0} FAQ responses
+                  </span>
                 </div>
               </div>
             </div>
@@ -420,20 +615,16 @@ const ChatHistoryView = ({ botId }) => {
                       key={index} 
                       className={`${styles.message} ${
                         message.from === 'user' ? styles.userMessage : styles.botMessage
-                      }`}
+                      } ${message.is_faq ? styles.faqResponse : ''}`}
                     >
                       <div className={styles.messageHeader}>
                         <div className={styles.messageSender}>
                           {message.from === 'user' ? '👤 User' : '🤖 Bot'}
-                        </div>
-                        <div className={styles.messageTime}>
-                          {message.timestamp ? 
-                            new Date(message.timestamp).toLocaleTimeString() : 
-                            new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                          }
+
                         </div>
                       </div>
                       <FormattedMessage message={message} />
+
                     </div>
                   ))
                 ) : (
@@ -477,6 +668,9 @@ const ChatHistoryView = ({ botId }) => {
                       .replace(/<[^>]*>/g, '') 
                       .substring(0, 80);
                     
+                    // Count FAQ responses in this history
+                    const faqCount = history.messages?.filter(msg => msg.is_faq).length || 0;
+                    
                     return (
                       <div 
                         key={history.id}
@@ -489,6 +683,7 @@ const ChatHistoryView = ({ botId }) => {
                           </strong>
                           <span className={styles.messageCount}>
                             {history.messages?.length || 0} message{(history.messages?.length || 0) !== 1 ? 's' : ''}
+                            {faqCount > 0 && ` • ${faqCount} FAQ`}
                           </span>
                         </div>
                         <div className={styles.itemPreview}>

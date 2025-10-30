@@ -255,13 +255,13 @@ const AnalyticsView = ({ botId }) => {
                 <span className={styles.statValue}>{item.message_count || 0}</span>
               </div>
             </div>
-            <div className={styles.tooltipStat}>
+            {/* <div className={styles.tooltipStat}>
               <span className={styles.statIcon}>⏱️</span>
               <div className={styles.statDetails}>
                 <span className={styles.statLabel}>Session:</span>
                 <span className={styles.statValue}>{item.session_duration || 0} min</span>
               </div>
-            </div>
+            </div> */}
           </div>
           
           <div className={styles.tooltipFooter}>
@@ -325,9 +325,9 @@ const AnalyticsView = ({ botId }) => {
     return analyticsData.engagement_data.map((user, index) => {
       try {
         const messageCount = user.message_count || 0;
-        const size = 6 + (Math.min(messageCount / 30, 1) * 8);
+        const size = 12 + (Math.min(messageCount / 30, 1) * 8);
         const opacity = 0.4 + (Math.min(messageCount / 30, 1) * 0.6);
-        const baseColor = messageCount > 10 ? '34, 101, 189' : '74, 144, 226';
+        const baseColor = messageCount > 10 ? '94, 301, 789' : '14, 844, 226';
         const colorIntensity = messageCount > 10 ? 1 : 0.7;
         const userTime = new Date(user.timestamp);
         const userHours = userTime.getHours();
