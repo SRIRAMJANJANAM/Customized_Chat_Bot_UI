@@ -27,6 +27,32 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
   const [editPathName, setEditPathName] = useState('');
   const [editPathDescription, setEditPathDescription] = useState('');
 
+
+  const testEmailConfiguration = async (node) => {
+    if (!selected.data.emailSenderEmail || !selected.data.emailRecipients) {
+      alert('Please configure sender email and recipients first');
+      return;
+    }
+
+    try {
+      // Use the API function instead of direct fetch
+      const response = await API.testEmailConfiguration(
+        botId,
+        node.id,
+        node.data.emailRecipients.split(',')[0].trim()
+      );
+
+      if (response.data) {
+        alert('✅ Test email sent successfully!');
+      } else {
+        alert('❌ Failed to send test email');
+      }
+    } catch (err) {
+      console.error('Test email error:', err);
+      alert('❌ Error sending test email: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   const convertToFlowFormat = (data, isPath = false) => {
     const nds = data.nodes.map((n) => {
       const frontendNodeType = {
@@ -40,6 +66,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         end: 'end',
         trigger_path: 'trigger_path',
         google_sheet: 'google_sheet',
+        send_email: 'send_email',
       }[n.node_type] || n.node_type;
 
       let label = isPath
@@ -83,6 +110,14 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         }
       }
 
+      if (n.node_type === 'send_email') {
+        if (n.email_subject) {
+          label = `Email: ${n.email_subject.substring(0, 20)}...`;
+        } else {
+          label = 'Send Email (not configured)';
+        }
+      }
+
       return {
         id: String(n.id),
         position: { x: n.x, y: n.y },
@@ -105,7 +140,14 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
           formFields: formFields,
           formTitle: n.form_title || (n.content ? '' : 'Please fill out the form below:'),
           formDescription: n.form_description || '',
-          submitButtonText: n.submit_button_text || 'Submit Form'
+          submitButtonText: n.submit_button_text || 'Submit Form',
+          // Email fields
+          emailSenderName: n.email_sender_name || '',
+          emailSenderEmail: n.email_sender_email || '',
+          emailRecipients: n.email_recipients || '',
+          emailSubject: n.email_subject || '',
+          emailBody: n.email_body || '',
+          emailBodyType: n.email_body_type || 'custom'
         },
         type: 'default',
         _ntype: n.node_type,
@@ -261,6 +303,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
       end: 'end',
       trigger_path: 'trigger_path',
       google_sheet: 'google_sheet',
+      send_email: 'send_email',
     }[type] || type;
 
     const triggeredPath = activePath ? null : null;
@@ -275,6 +318,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
       file: '',
       trigger_path: 'Select a path to trigger...',
       google_sheet: '', 
+      send_email: '',
     }[type] || '';
 
     const defaultWidth = type === 'image' ? 200 : null;
@@ -320,6 +364,8 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
             ? 'Message with Options'
             : type === 'google_sheet'
             ? 'Google Sheet Form'
+            : type === 'send_email'
+            ? 'Send Email'
             : `${type} ${id}`,
         content: defaultContent,
         nodeType: type,
@@ -338,7 +384,14 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         formFields: defaultFormFields,
         formTitle: type === 'google_sheet' ? 'Please fill out the form below:' : '',
         formDescription: '',
-        submitButtonText: 'Submit Form'
+        submitButtonText: 'Submit Form',
+        // Email defaults
+        emailSenderName: '',
+        emailSenderEmail: '',
+        emailRecipients: '',
+        emailSubject: '',
+        emailBody: '',
+        emailBodyType: 'custom'
       },
       _ntype: backendNodeType,
       pathId: activePath ? activePath.id : null,
@@ -654,7 +707,14 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
               })) || [],
               form_title: n.data.formTitle,
               form_description: n.data.formDescription,
-              submit_button_text: n.data.submitButtonText
+              submit_button_text: n.data.submitButtonText,
+              // Email data
+              email_sender_name: n.data.emailSenderName || '',
+              email_sender_email: n.data.emailSenderEmail || '',
+              email_recipients: n.data.emailRecipients || '',
+              email_subject: n.data.emailSubject || '',
+              email_body: n.data.emailBody || '',
+              email_body_type: n.data.emailBodyType || 'custom'
             },
           }))
         )
@@ -748,7 +808,14 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
               })) || [],
               form_title: n.data.formTitle,
               form_description: n.data.formDescription,
-              submit_button_text: n.data.submitButtonText
+              submit_button_text: n.data.submitButtonText,
+              // Email data
+              email_sender_name: n.data.emailSenderName || '',
+              email_sender_email: n.data.emailSenderEmail || '',
+              email_recipients: n.data.emailRecipients || '',
+              email_subject: n.data.emailSubject || '',
+              email_body: n.data.emailBody || '',
+              email_body_type: n.data.emailBodyType || 'custom'
             },
           }))
         )
@@ -842,6 +909,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     openPathBuilder,
     closePathBuilder,
     savePathGraph,
-    saveGraph
+    saveGraph,
+    testEmailConfiguration // Add this to the return object
   };
 };

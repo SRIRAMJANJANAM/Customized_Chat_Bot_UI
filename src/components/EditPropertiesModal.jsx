@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import styles from './Builder.module.css';
+import { API } from '../api'; // Import your API configuration
 
 const EditPropertiesModal = ({
   selected,
@@ -14,7 +15,43 @@ const EditPropertiesModal = ({
   onDelete,
   onClose
 }) => {
+  const [testingEmail, setTestingEmail] = useState(false);
+
   if (!selected) return null;
+
+  // Test email configuration function - FIXED
+  const testEmailConfiguration = async () => {
+    if (!selected.data.emailSenderEmail || !selected.data.emailRecipients) {
+      alert('Please configure sender email and recipients first');
+      return;
+    }
+
+    try {
+      setTestingEmail(true);
+      
+      // Extract botId from activePath or use a default
+      const botId = activePath?.chatbot || 'current';
+      
+      // Use the API instance which has the correct baseURL and authentication
+      const response = await API.post(`/chatbots/${botId}/send_test_email/`, {
+        node_id: selected.id,
+        test_recipient: selected.data.emailRecipients.split(',')[0].trim()
+      });
+
+      if (response.data) {
+        alert('✅ Test email sent successfully!');
+      } else {
+        alert('❌ Failed to send test email');
+      }
+    } catch (error) {
+      console.error('Test email error:', error);
+      alert('❌ Error sending test email: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setTestingEmail(false);
+    }
+  };
+
+  // ... rest of your component code remains exactly the same
   const addFormField = () => {
     const newField = {
       id: Date.now().toString(),
@@ -28,16 +65,19 @@ const EditPropertiesModal = ({
     const currentFields = selected.data.formFields || [];
     updateSelected('formFields', [...currentFields, newField]);
   };
+
   const updateFormField = (fieldId, key, value) => {
     const updatedFields = selected.data.formFields?.map(field => 
       field.id === fieldId ? { ...field, [key]: value } : field
     ) || [];
     updateSelected('formFields', updatedFields);
   };
+
   const removeFormField = (fieldId) => {
     const updatedFields = selected.data.formFields?.filter(field => field.id !== fieldId) || [];
     updateSelected('formFields', updatedFields);
   };
+
   const updateValidation = (fieldId, validationKey, value) => {
     const updatedFields = selected.data.formFields?.map(field => {
       if (field.id === fieldId) {
@@ -53,12 +93,14 @@ const EditPropertiesModal = ({
     }) || [];
     updateSelected('formFields', updatedFields);
   };
+
   const generateAttributeName = (label) => {
     return label
       .toLowerCase()
       .replace(/[^a-zA-Z0-9 ]/g, '')
       .replace(/\s+/g, '_');
   };
+
   const renderValidationOptions = (field) => {
     switch (field.type) {
       case 'text':
@@ -227,12 +269,14 @@ const EditPropertiesModal = ({
         return null;
     }
   };
+
   const getAvailableAttributes = () => {
     return selected.data.formFields?.map(field => ({
       name: field.attributeName,
       label: field.label
     })) || [];
   };
+
   const insertAttribute = (attributeName) => {
     const currentContent = selected.data.content || '';
     const newContent = currentContent + ` {{${attributeName}}}`;
@@ -407,50 +451,50 @@ const EditPropertiesModal = ({
 
                     {/* Options for select, radio, checkbox */}
                     {(field.type === 'select' || field.type === 'radio') && (
-  <div className={styles.fieldGroup}>
-    <label className={styles.subLabel}>Options</label>
-    <div className={styles.optionsInputContainer}>
-      {field.options?.map((option, optIndex) => (
-        <div key={optIndex} className={styles.optionInputRow}>
-          <input
-            type="text"
-            value={option}
-            onChange={(e) => {
-              const newOptions = [...(field.options || [])];
-              newOptions[optIndex] = e.target.value;
-              updateFormField(field.id, 'options', newOptions);
-            }}
-            className={styles.optionInput}
-            placeholder={`Option ${optIndex + 1}`}
-          />
-          <button
-            type="button"
-            onClick={() => {
-              const newOptions = field.options?.filter((_, i) => i !== optIndex) || [];
-              updateFormField(field.id, 'options', newOptions);
-            }}
-            className={styles.removeOptionButton}
-            title="Remove option"
-          >
-            ×
-          </button>
-        </div>
-      ))}
-      <button
-        type="button"
-        onClick={() => {
-          const currentOptions = field.options || [];
-          updateFormField(field.id, 'options', [...currentOptions, '']);
-        }}
-        className={styles.addOptionButton}
-      >
-        + Add Option
-      </button>
-    </div>
-    <div className={styles.helpText}>
-      Each option will appear as a separate choice in the {field.type === 'select' ? 'dropdown' : 'radio group'}
-    </div>
-  </div>
+                      <div className={styles.fieldGroup}>
+                        <label className={styles.subLabel}>Options</label>
+                        <div className={styles.optionsInputContainer}>
+                          {field.options?.map((option, optIndex) => (
+                            <div key={optIndex} className={styles.optionInputRow}>
+                              <input
+                                type="text"
+                                value={option}
+                                onChange={(e) => {
+                                  const newOptions = [...(field.options || [])];
+                                  newOptions[optIndex] = e.target.value;
+                                  updateFormField(field.id, 'options', newOptions);
+                                }}
+                                className={styles.optionInput}
+                                placeholder={`Option ${optIndex + 1}`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newOptions = field.options?.filter((_, i) => i !== optIndex) || [];
+                                  updateFormField(field.id, 'options', newOptions);
+                                }}
+                                className={styles.removeOptionButton}
+                                title="Remove option"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentOptions = field.options || [];
+                              updateFormField(field.id, 'options', [...currentOptions, '']);
+                            }}
+                            className={styles.addOptionButton}
+                          >
+                            + Add Option
+                          </button>
+                        </div>
+                        <div className={styles.helpText}>
+                          Each option will appear as a separate choice in the {field.type === 'select' ? 'dropdown' : 'radio group'}
+                        </div>
+                      </div>
                     )}
 
                     {/* Validation Options */}
@@ -681,6 +725,7 @@ const EditPropertiesModal = ({
             </>
           )}
 
+          {/* Trigger Path Section */}
           {selected._ntype === 'trigger_path' && (
             <>
               <label className={styles.label}>Select Path to Trigger</label>
@@ -710,6 +755,102 @@ const EditPropertiesModal = ({
             </>
           )}
 
+          {/* Email Configuration Section */}
+          {selected._ntype === 'send_email' && (
+            <div className={styles.emailSection}>
+              <h4>Email Configuration</h4>
+              
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Sender Name</label>
+                <input
+                  type="text"
+                  value={selected.data.emailSenderName || ''}
+                  onChange={(e) => updateSelected('emailSenderName', e.target.value)}
+                  placeholder="Company Name"
+                  className={styles.input}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Sender Email *</label>
+                <input
+                  type="email"
+                  value={selected.data.emailSenderEmail || ''}
+                  onChange={(e) => updateSelected('emailSenderEmail', e.target.value)}
+                  placeholder="noreply@company.com"
+                  className={styles.input}
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Recipients *</label>
+                <input
+                  type="text"
+                  value={selected.data.emailRecipients || ''}
+                  onChange={(e) => updateSelected('emailRecipients', e.target.value)}
+                  placeholder="email1@example.com, email2@example.com"
+                  className={styles.input}
+                  required
+                />
+                <div className={styles.helpText}>Separate multiple emails with commas</div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Subject *</label>
+                <input
+                  type="text"
+                  value={selected.data.emailSubject || ''}
+                  onChange={(e) => updateSelected('emailSubject', e.target.value)}
+                  placeholder="Email Subject Line"
+                  className={styles.input}
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Email Body Type</label>
+                <select
+                  value={selected.data.emailBodyType || 'custom'}
+                  onChange={(e) => updateSelected('emailBodyType', e.target.value)}
+                  className={styles.input}
+                >
+                  <option value="custom">Custom Message</option>
+                  <option value="form_data">Use Form Data</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Email Body *</label>
+                <textarea
+                  value={selected.data.emailBody || ''}
+                  onChange={(e) => updateSelected('emailBody', e.target.value)}
+                  placeholder="Enter your email content here. Use {{field_name}} for dynamic data."
+                  rows={6}
+                  className={styles.textarea}
+                  required
+                />
+                <div className={styles.helpText}>
+                  Use placeholders like &#123;&#123;user_input&#125;&#125;, &#123;&#123;session_id&#125;&#125;, 
+                  &#123;&#123;timestamp&#125;&#125; for dynamic content
+                </div>
+              </div>
+
+              {/* Test Email Button */}
+              <div className={styles.formGroup}>
+                <button
+                  type="button"
+                  className={styles.testEmailButton}
+                  onClick={testEmailConfiguration}
+                  disabled={!selected.data.emailSenderEmail || !selected.data.emailRecipients || testingEmail}
+                >
+                  {testingEmail ? 'Testing...' : 'Test Email Configuration'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* File Upload Section */}
           {(selected._ntype === 'image' || selected._ntype === 'file_upload') && (
             <>
               <label className={styles.label}>Upload File</label>

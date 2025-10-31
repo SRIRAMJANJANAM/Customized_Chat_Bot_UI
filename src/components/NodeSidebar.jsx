@@ -56,6 +56,14 @@ export default function NodeSidebar({ addNode }) {
       items: [
         { type: 'google_sheet', label: 'Send to Google Sheet', icon: '📗', description: 'Save data to Google Sheets' },
       ]
+    },
+    {
+      name: 'Communication',
+      description: 'Nodes for sending messages and notifications',
+      color: '#FF5722',
+      items: [
+        { type: 'send_email', label: 'Send Email', icon: '📧', description: 'Send emails to users' },
+      ]
     }
   ];
   const toggleCategory = (categoryName) => {

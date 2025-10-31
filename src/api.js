@@ -76,3 +76,16 @@ export const checkFaq = async (chatbotId, userInput) => {
     user_input: userInput
   });
 };
+
+// ==================== EMAIL TESTING API ====================
+export const testEmailConfiguration = async (chatbotId, nodeId, testRecipient) => {
+  return await API.post(`/chatbots/${chatbotId}/send_test_email/`, {
+    node_id: nodeId,
+    test_recipient: testRecipient
+  });
+};
+
+// ==================== SYNC STATUS API ====================
+export const getSyncStatus = async (chatbotId) => {
+  return await API.get(`/chatbots/${chatbotId}/sync_status/`);
+};

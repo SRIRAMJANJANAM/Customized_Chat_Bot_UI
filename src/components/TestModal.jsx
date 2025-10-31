@@ -344,19 +344,19 @@ export default function TestModal({ botId, onClose }) {
     setRunning(true);
 
     try {
-      const userMessage = "Form submitted";
-      setTranscript(prev => [...prev, {
-        from: 'user',
-        type: 'text',
-        text: userMessage,
-        timestamp: new Date().toISOString(),
-        id: `form-submit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-        form_data: formData
-      }]);
+      // const userMessage = "Form submitted";
+      // setTranscript(prev => [...prev, {
+      //   from: 'user',
+      //   type: 'text',
+      //   text: userMessage,
+      //   timestamp: new Date().toISOString(),
+      //   id: `form-submit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      //   form_data: formData
+      // }]);
       
       const payload = {
         user_inputs: { 
-          input: userMessage,
+          input: '',
           form_data: formData 
         },
         current_node_id: currentFormNodeId || currentNodeId,

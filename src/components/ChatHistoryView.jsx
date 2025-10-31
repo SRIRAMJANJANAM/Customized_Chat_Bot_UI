@@ -659,52 +659,58 @@ const ChatHistoryView = ({ botId }) => {
             ) : (
               <>
                 <div className={styles.historyItems}>
-                  {chatHistories.map(history => {
-                    const lastMessage = history.messages && history.messages.length > 0 ? 
-                      history.messages[history.messages.length - 1]?.text || 'No message text' : 
-                      'No messages';
-                    
-                    const formattedLastMessage = lastMessage
-                      .replace(/<[^>]*>/g, '') 
-                      .substring(0, 80);
-                    
-                    // Count FAQ responses in this history
-                    const faqCount = history.messages?.filter(msg => msg.is_faq).length || 0;
-                    
-                    return (
-                      <div 
-                        key={history.id}
-                        className={styles.historyItem}
-                        onClick={() => fetchChatHistory(history.session_id)}
-                      >
-                        <div className={styles.itemHeader}>
-                          <strong className={styles.userName}>
-                            {formatUserIdentifier(history.user_identifier)}
-                          </strong>
-                          <span className={styles.messageCount}>
-                            {history.messages?.length || 0} message{(history.messages?.length || 0) !== 1 ? 's' : ''}
-                            {faqCount > 0 && ` • ${faqCount} FAQ`}
-                          </span>
-                        </div>
-                        <div className={styles.itemPreview}>
-                          <span className={styles.lastMessage}>
-                            {formattedLastMessage}
-                            {lastMessage.length > 80 ? '...' : ''}
-                          </span>
-                        </div>
-                        <div className={styles.itemFooter}>
-                          <span className={styles.chatTime}>
-                            {new Date(history.last_activity).toLocaleDateString()} at {' '}
-                            {new Date(history.last_activity).toLocaleTimeString([], { 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+  {chatHistories.map(history => {
+    // Safe message extraction
+    const lastMessage = history.messages && history.messages.length > 0 ? 
+      history.messages[history.messages.length - 1]?.text : 
+      null;
+
+    // Safe string formatting
+    const formatMessage = (msg) => {
+      if (!msg) return 'No message text';
+      const msgString = String(msg);
+      const cleanMsg = msgString.replace(/<[^>]*>/g, '');
+      return cleanMsg.length > 80 ? cleanMsg.substring(0, 80) + '...' : cleanMsg;
+    };
+
+    const formattedLastMessage = formatMessage(lastMessage);
+    
+    // Count FAQ responses in this history
+    const faqCount = history.messages?.filter(msg => msg.is_faq).length || 0;
+    
+    return (
+      <div 
+        key={history.id}
+        className={styles.historyItem}
+        onClick={() => fetchChatHistory(history.session_id)}
+      >
+        <div className={styles.itemHeader}>
+          <strong className={styles.userName}>
+            {formatUserIdentifier(history.user_identifier)}
+          </strong>
+          <span className={styles.messageCount}>
+            {history.messages?.length || 0} message{(history.messages?.length || 0) !== 1 ? 's' : ''}
+            {faqCount > 0 && ` • ${faqCount} FAQ`}
+          </span>
+        </div>
+        <div className={styles.itemPreview}>
+          <span className={styles.lastMessage}>
+            {formattedLastMessage}
+          </span>
+        </div>
+        <div className={styles.itemFooter}>
+          <span className={styles.chatTime}>
+            {new Date(history.last_activity).toLocaleDateString()} at {' '}
+            {new Date(history.last_activity).toLocaleTimeString([], { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </span>
+        </div>
+      </div>
+    );
+  })}
+</div>
                 
                 {/* Pagination  */}
                 {totalPages > 1 && (

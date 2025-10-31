@@ -4,13 +4,13 @@ import 'reactflow/dist/style.css';
 import { useSearchParams } from 'react-router-dom';
 import styles from './Builder.module.css';
 import { useBuilderLogic } from './useBuilderLogic';
-import ChatHistoryView from './ChatHistoryView';
 import AnalyticsView from './AnalyticsView';
 import FAQManagementView from './FAQManagementView';
 import WebsiteIntegrationView from './WebsiteIntegrationView';
 import NodeSidebar from './NodeSidebar';
 import EditPropertiesModal from './EditPropertiesModal';
 import HomeView from './HomeView';
+import ChatHistoryView from './ChatHistoryView';
 
 let idCounter = 1;
 const genId = () => String(++idCounter);
@@ -68,7 +68,8 @@ export default function Builder({ botId }) {
     openPathBuilder,
     closePathBuilder,
     savePathGraph,
-    saveGraph
+    saveGraph,
+    testEmailConfiguration
   } = useBuilderLogic(botId, searchParams, setSearchParams, genId);
 
   // Helper function to get path name
@@ -180,6 +181,13 @@ export default function Builder({ botId }) {
         newLabel = `Google Sheet: ${selected.data.googleSheetUrl.substring(0, 30)}...`;
       } else {
         newLabel = 'Google Sheet Form';
+      }
+    }
+    else if (selected._ntype === 'send_email') {
+      if (selected.data.emailSubject) {
+        newLabel = `Email: ${selected.data.emailSubject.substring(0, 20)}...`;
+      } else {
+        newLabel = 'Send Email (not configured)';
       }
     }
     if (selected.data.label !== newLabel) {
@@ -441,6 +449,7 @@ export default function Builder({ botId }) {
           onCancel={cancelNodeChanges}
           onDelete={deleteNode}
           onClose={() => setEditModalOpen(false)}
+          testEmailConfiguration={testEmailConfiguration}
         />
       )}
       
