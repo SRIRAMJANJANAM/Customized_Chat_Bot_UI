@@ -262,28 +262,27 @@
   background: #ff0202;
   color: white;
   border: none;
-  padding: 1vw;
-  border-radius: 20%;
+  padding: 0.2vw;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: bolder;
   font-size: 1.4vw;
   transition: background-color 0.2s;
+  width: 6vw;
 }
 
 .addPathButton:hover {
-  background: gold;
+  background: rgb(102, 255, 0);
   transform: translateY(-4px);
-  border-radius: 50%;
   color: #000000;
 }
 
 .pathsList {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #eaeef1;
   border-radius: 8px;
   padding: 16px;
   max-height: 300px;
   overflow-y: auto;
-  background: #f8fafc;
 }
 
 .pathsList h4 {
@@ -311,11 +310,6 @@
   border-radius: 19px;
 }
 
-.pathName {
-  flex: 1;
-  font-weight: bolder;
-  font-size: 14px;
-}
 
 .removePathButton {
   background: #fef2f2;
