@@ -530,6 +530,10 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
+  width: 90%;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2%;
 }
 
 .optionInput:focus {
@@ -542,10 +546,12 @@
   background: #dc3545;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 50%;
   cursor: pointer;
   font-size: 16px;
   line-height: 1;
+  border-bottom-left-radius: 0%;
+  border-top-left-radius: 0%;
 }
 
 .removeOptionButton:hover {
@@ -560,7 +566,6 @@
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
-  align-self: flex-start;
 }
 
 .addOptionButton:hover {
@@ -580,7 +585,7 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
-  background-color: #f9f9f9;
+  background-color: #e6e2e2;
   transition: border-color 0.2s ease;
 }
 
@@ -636,7 +641,7 @@
   cursor: pointer;
   border-radius: 4px;
   font-size: 16px;
-  color: #ffffff;
+  color: #d1ff04;
   transition: background-color 0.2s;
 }
 
@@ -649,8 +654,8 @@
   position: absolute;
   top: 100%;
   right: 0;
-  background: white;
-  border: 1px solid #e1e5e9;
+  background: rgb(3, 3, 3);
+  border: 1px solid #bbff00;
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   z-index: 1000;
@@ -662,31 +667,23 @@
   cursor: pointer;
   font-size: 12px;
   transition: background-color 0.2s;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #bbff00;
   color: green;
   font-weight: bolder;
 }
 
-.menuItem:hover {
+.menuItem:hover,.deleteItem:hover {
   background: #ffef12;
   color: black;
   border: 1px solid green;
-  text-align: center;
   font-weight: bolder;
-  border-radius: 12px;
 }
 
 .deleteItem {
   color: #dc3545;
 }
 
-.deleteItem:hover {
-  background: #ff0015;
-  border: 1px solid green;
-  color: white;
-  text-align: center;
-  border-radius: 12px;
-}
+
 
 .mainBadge {
   background: #4f46e5;
@@ -758,10 +755,11 @@
 
 .helpText {
   font-size: 0.8rem;
-  color: #ffd415;
+  color: #0a0a0a;
   margin-top: 0px;
   margin-bottom: 16px;
   line-height: 1.4;
+  font-weight: bolder;
 }
 
 .helpText ul {
@@ -775,11 +773,11 @@
 }
 
 .helpText code {
-  background: #f7fafc;
+  background: #ff9900;
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.75rem;
-  color: #e53e3e;
+  color: #ffffff;
   border: 1px solid #edf2f7;
 }
 
@@ -944,6 +942,7 @@
   font-weight: 500;
   color: #2d3748;
   font-size: 0.9rem;
+  font-weight: bolder;
 }
 
 .previewInput {
@@ -1411,9 +1410,6 @@
   color: #000000;
   font-weight: bolder;
 }
-
-
-
 .reloadButton:disabled, .addNodeButton:disabled, .pathPanelButton:disabled, .addPathButton:disabled, .searchInput:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -4598,7 +4594,7 @@ p {
   display: block;
   margin-bottom: 5px;
   font-weight: 500;
-  color: #333;
+  color: gold;
 }
 
 .testEmailButton {
