@@ -327,7 +327,7 @@ const AnalyticsView = ({ botId }) => {
         const messageCount = user.message_count || 0;
         const size = 12 + (Math.min(messageCount / 30, 1) * 8);
         const opacity = 0.4 + (Math.min(messageCount / 30, 1) * 0.6);
-        const baseColor = messageCount > 10 ? '94, 301, 789' : '14, 844, 226';
+        const baseColor = messageCount > 10 ? '94, 1, 89' : '54, 54, 56';
         const colorIntensity = messageCount > 10 ? 1 : 0.7;
         const userTime = new Date(user.timestamp);
         const userHours = userTime.getHours();

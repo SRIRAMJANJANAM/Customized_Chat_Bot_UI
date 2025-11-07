@@ -16,10 +16,27 @@ const EditPropertiesModal = ({
   onClose
 }) => {
   const [testingEmail, setTestingEmail] = useState(false);
+  const [testingApi, setTestingApi] = useState(false);
+  const [apiTestResult, setApiTestResult] = useState(null);
+  const [jsonErrors, setJsonErrors] = useState({});
+  const [expandedSections, setExpandedSections] = useState({
+    headers: true,
+    body: true,
+    mapping: true,
+    testResults: false
+  });
 
   if (!selected) return null;
 
-  // Test email configuration function - FIXED
+  // Toggle section expansion
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  // Test email configuration function
   const testEmailConfiguration = async () => {
     if (!selected.data.emailSenderEmail || !selected.data.emailRecipients) {
       alert('Please configure sender email and recipients first');
@@ -29,10 +46,8 @@ const EditPropertiesModal = ({
     try {
       setTestingEmail(true);
       
-      // Extract botId from activePath or use a default
       const botId = activePath?.chatbot || 'current';
       
-      // Use the API instance which has the correct baseURL and authentication
       const response = await API.post(`/chatbots/${botId}/send_test_email/`, {
         node_id: selected.id,
         test_recipient: selected.data.emailRecipients.split(',')[0].trim()
@@ -51,7 +66,291 @@ const EditPropertiesModal = ({
     }
   };
 
-  // ... rest of your component code remains exactly the same
+  // Enhanced JSON validation and formatting
+  const validateAndFormatJson = (value, fieldName) => {
+    const errors = { ...jsonErrors };
+    
+    if (!value || value.trim() === '') {
+      delete errors[fieldName];
+      setJsonErrors(errors);
+      return { value: '', formatted: '', isValid: true };
+    }
+
+    try {
+      const parsed = JSON.parse(value);
+      const formatted = JSON.stringify(parsed, null, 2);
+      delete errors[fieldName];
+      setJsonErrors(errors);
+      return { value: formatted, formatted, isValid: true, parsed };
+    } catch (error) {
+      const trimmed = value.trim();
+      if ((trimmed.startsWith('{') && !trimmed.endsWith('}')) || 
+          (trimmed.startsWith('[') && !trimmed.endsWith(']'))) {
+        errors[fieldName] = 'Incomplete JSON';
+        setJsonErrors(errors);
+        return { value, formatted: value, isValid: false };
+      }
+      
+      errors[fieldName] = 'Invalid JSON format';
+      setJsonErrors(errors);
+      return { value, formatted: value, isValid: false };
+    }
+  };
+
+  // Handle JSON input changes
+  const handleJsonChange = (fieldName, value) => {
+    const result = validateAndFormatJson(value, fieldName);
+    updateSelected(fieldName, result.parsed || value);
+    return result;
+  };
+
+  // Enhanced API test function
+  const testApiConfiguration = async (node) => {
+    if (!node.data.apiUrl) {
+      alert('Please configure API URL first');
+      return;
+    }
+
+    // Validate JSON fields before testing
+    const headersValidation = validateAndFormatJson(
+      typeof node.data.apiHeaders === 'string' ? node.data.apiHeaders : JSON.stringify(node.data.apiHeaders || {}, null, 2),
+      'apiHeaders'
+    );
+    
+    const bodyValidation = validateAndFormatJson(
+      typeof node.data.apiBody === 'string' ? node.data.apiBody : JSON.stringify(node.data.apiBody || {}, null, 2),
+      'apiBody'
+    );
+    
+    const mappingValidation = validateAndFormatJson(
+      typeof node.data.apiResponseMapping === 'string' ? node.data.apiResponseMapping : JSON.stringify(node.data.apiResponseMapping || {}, null, 2),
+      'apiResponseMapping'
+    );
+
+    if (!headersValidation.isValid || !bodyValidation.isValid || !mappingValidation.isValid) {
+      alert('Please fix JSON formatting errors before testing');
+      return;
+    }
+
+    try {
+      setTestingApi(true);
+      setApiTestResult(null);
+      
+      const testData = {
+        url: node.data.apiUrl,
+        method: node.data.apiMethod || 'GET',
+        headers: headersValidation.parsed || {},
+        body: bodyValidation.parsed || {},
+        response_mapping: mappingValidation.parsed || {}
+      };
+
+      const response = await API.post('/test-api/', testData);
+      
+      if (response.data.success) {
+        setApiTestResult({
+          success: true,
+          status: response.data.status_code,
+          data: response.data.response_data,
+          extracted: response.data.extracted_data,
+          message: 'API test successful!'
+        });
+        setExpandedSections(prev => ({ ...prev, testResults: true }));
+      } else {
+        setApiTestResult({
+          success: false,
+          error: response.data.error || 'Unknown error occurred',
+          message: 'API test failed!'
+        });
+      }
+    } catch (error) {
+      console.error('🔴 API test error:', error);
+      
+      let errorMessage = error.message;
+      if (error.response) {
+        errorMessage = error.response.data.error || error.response.data.detail || `Server error: ${error.response.status}`;
+      } else if (error.request) {
+        errorMessage = 'No response from server. Check if backend is running.';
+      }
+      
+      setApiTestResult({
+        success: false,
+        error: errorMessage,
+        message: 'API test failed!'
+      });
+    } finally {
+      setTestingApi(false);
+    }
+  };
+
+  // Common header templates
+  const commonHeaders = [
+    { name: 'Content-Type: application/json', value: { 'Content-Type': 'application/json' } },
+    { name: 'Authorization: Bearer Token', value: { 'Authorization': 'Bearer your_token_here' } },
+    { name: 'API Key', value: { 'X-API-Key': 'your_api_key_here' } },
+    { name: 'Custom Headers', value: { 'Custom-Header': 'value' } }
+  ];
+
+  const applyHeaderTemplate = (template) => {
+    const currentHeaders = typeof selected.data.apiHeaders === 'string' 
+      ? selected.data.apiHeaders 
+      : JSON.stringify(selected.data.apiHeaders || {}, null, 2);
+    
+    let newHeaders;
+    if (currentHeaders.trim() === '' || currentHeaders === '{}') {
+      newHeaders = JSON.stringify(template.value, null, 2);
+    } else {
+      try {
+        const parsed = JSON.parse(currentHeaders);
+        newHeaders = JSON.stringify({ ...parsed, ...template.value }, null, 2);
+      } catch {
+        newHeaders = currentHeaders;
+      }
+    }
+    
+    updateSelected('apiHeaders', newHeaders);
+    validateAndFormatJson(newHeaders, 'apiHeaders');
+  };
+
+  // Common variables for dynamic content
+  const commonVariables = [
+    'user_input', 'user_id', 'session_id', 'timestamp', 'user_name', 'user_email', 'flow_data'
+  ];
+
+  const insertVariable = (variable, field) => {
+    const currentValue = selected.data[field] || '';
+    const newValue = currentValue + ` {{${variable}}}`;
+    updateSelected(field, newValue);
+  };
+
+  // Quick method templates
+  const methodTemplates = {
+    'GET': {
+      headers: { 'Content-Type': 'application/json' },
+      body: {}
+    },
+    'POST': {
+      headers: { 'Content-Type': 'application/json' },
+      body: { 'data': '{{user_input}}' }
+    },
+    'PUT': {
+      headers: { 'Content-Type': 'application/json' },
+      body: { 'id': '{{user_id}}', 'data': '{{user_input}}' }
+    }
+  };
+
+  const applyMethodTemplate = (method) => {
+    updateSelected('apiMethod', method);
+    if (methodTemplates[method]) {
+      updateSelected('apiHeaders', JSON.stringify(methodTemplates[method].headers, null, 2));
+      updateSelected('apiBody', JSON.stringify(methodTemplates[method].body, null, 2));
+    }
+  };
+
+  // Validation functions
+  const validateFieldValue = (field, value) => {
+    if (field.required && (!value || value.toString().trim() === '')) {
+      return { isValid: false, message: 'This field is required' };
+    }
+
+    if (!value || value.toString().trim() === '') {
+      return { isValid: true };
+    }
+
+    switch (field.type) {
+      case 'email':
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
+          return { isValid: false, message: 'Please enter a valid email address' };
+        }
+        break;
+
+      case 'phone':
+        const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+        const cleanedValue = value.replace(/[^\d+]/g, '');
+        if (!phoneRegex.test(cleanedValue)) {
+          return { isValid: false, message: 'Please enter a valid phone number' };
+        }
+        if (field.validation?.international && !value.startsWith('+')) {
+          return { isValid: false, message: 'International numbers must start with +' };
+        }
+        break;
+
+      case 'number':
+        const numValue = parseFloat(value);
+        if (isNaN(numValue)) {
+          return { isValid: false, message: 'Please enter a valid number' };
+        }
+        if (field.validation?.integerOnly && !Number.isInteger(numValue)) {
+          return { isValid: false, message: 'Only whole numbers are allowed' };
+        }
+        if (field.validation?.minValue !== undefined && numValue < field.validation.minValue) {
+          return { isValid: false, message: `Value must be at least ${field.validation.minValue}` };
+        }
+        if (field.validation?.maxValue !== undefined && numValue > field.validation.maxValue) {
+          return { isValid: false, message: `Value must be at most ${field.validation.maxValue}` };
+        }
+        break;
+
+      case 'text':
+        const strValue = value.toString();
+        if (field.validation?.minLength && strValue.length < field.validation.minLengthValue) {
+          return { isValid: false, message: `Minimum length is ${field.validation.minLengthValue} characters` };
+        }
+        if (field.validation?.maxLength && strValue.length > field.validation.maxLengthValue) {
+          return { isValid: false, message: `Maximum length is ${field.validation.maxLengthValue} characters` };
+        }
+        if (field.validation?.pattern && field.validation.patternValue) {
+          const regex = new RegExp(field.validation.patternValue);
+          if (!regex.test(strValue)) {
+            return { isValid: false, message: 'Input does not match required format' };
+          }
+        }
+        break;
+
+      case 'date':
+        const dateValue = new Date(value);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (field.validation?.beforeToday && dateValue >= today) {
+          return { isValid: false, message: 'Date must be before today' };
+        }
+        if (field.validation?.afterToday && dateValue <= today) {
+          return { isValid: false, message: 'Date must be after today' };
+        }
+        if (field.validation?.minDate && dateValue < new Date(field.validation.minDate)) {
+          return { isValid: false, message: `Date must be after ${field.validation.minDate}` };
+        }
+        if (field.validation?.maxDate && dateValue > new Date(field.validation.maxDate)) {
+          return { isValid: false, message: `Date must be before ${field.validation.maxDate}` };
+        }
+        break;
+    }
+
+    return { isValid: true };
+  };
+
+  // Test validation for a specific field
+  const testFieldValidation = (field) => {
+    const testValues = {
+      'text': 'Test input',
+      'email': 'test@example.com',
+      'phone': '+1234567890',
+      'number': '42',
+      'date': '2024-01-01'
+    };
+
+    const testValue = testValues[field.type] || 'test';
+    const result = validateFieldValue(field, testValue);
+    
+    if (result.isValid) {
+      alert(`✅ Validation passed for ${field.type} field`);
+    } else {
+      alert(`❌ Validation failed: ${result.message}`);
+    }
+  };
+
+  // Form field management functions
   const addFormField = () => {
     const newField = {
       id: Date.now().toString(),
@@ -141,6 +440,15 @@ const EditPropertiesModal = ({
                 min="1"
               />
             )}
+            
+            <label className={styles.subLabel}>
+              <input
+                type="checkbox"
+                checked={field.validation?.pattern || false}
+                onChange={(e) => updateValidation(field.id, 'pattern', e.target.checked)}
+              />
+              Custom Pattern (Regex)
+            </label>
             {field.validation?.pattern && (
               <input
                 type="text"
@@ -150,6 +458,14 @@ const EditPropertiesModal = ({
                 placeholder="e.g., ^[A-Za-z]+$"
               />
             )}
+
+            <button
+              type="button"
+              onClick={() => testFieldValidation(field)}
+              className={styles.testValidationButton}
+            >
+              Test Validation
+            </button>
           </div>
         );
 
@@ -157,6 +473,13 @@ const EditPropertiesModal = ({
         return (
           <div className={styles.validationOptions}>
             <div className={styles.helpText}>Email format will be automatically validated</div>
+            <button
+              type="button"
+              onClick={() => testFieldValidation(field)}
+              className={styles.testValidationButton}
+            >
+              Test Email Validation
+            </button>
           </div>
         );
 
@@ -169,8 +492,15 @@ const EditPropertiesModal = ({
                 checked={field.validation?.international || false}
                 onChange={(e) => updateValidation(field.id, 'international', e.target.checked)}
               />
-              Accept international numbers
+              Require international format (start with +)
             </label>
+            <button
+              type="button"
+              onClick={() => testFieldValidation(field)}
+              className={styles.testValidationButton}
+            >
+              Test Phone Validation
+            </button>
           </div>
         );
 
@@ -205,6 +535,13 @@ const EditPropertiesModal = ({
               />
               Integer only (no decimals)
             </label>
+            <button
+              type="button"
+              onClick={() => testFieldValidation(field)}
+              className={styles.testValidationButton}
+            >
+              Test Number Validation
+            </button>
           </div>
         );
 
@@ -248,6 +585,13 @@ const EditPropertiesModal = ({
                 className={styles.validationInput}
               />
             </label>
+            <button
+              type="button"
+              onClick={() => testFieldValidation(field)}
+              className={styles.testValidationButton}
+            >
+              Test Date Validation
+            </button>
           </div>
         );
 
@@ -307,7 +651,6 @@ const EditPropertiesModal = ({
               className={styles.quillEditor} 
             />
             
-            {/* Available Attributes */}
             {selected.data.formFields && selected.data.formFields.length > 0 && (
               <div className={styles.availableAttributes}>
                 <label className={styles.subLabel}>Available Attributes:</label>
@@ -622,7 +965,8 @@ const EditPropertiesModal = ({
                   <li>Configure form fields that users will fill out</li>
                   <li>Each field has an attribute name that can be used in content as <code>{`{{attribute_name}}`}</code></li>
                   <li>When a user submits the form, data will be sent to your Google Sheet</li>
-                  <li>Make sure the Google Sheet is set to public or you have proper authentication</li>
+                  <li>Validation rules will be enforced when users input data in the chatbot</li>
+                  <li>Use "Test Validation" buttons to verify your validation rules</li>
                 </ul>
               </div>
             </>
@@ -869,6 +1213,270 @@ const EditPropertiesModal = ({
                 </div>
               )}
             </>
+          )}
+
+          {/* Enhanced API Configuration Section */}
+          {selected._ntype === 'api_call' && (
+            <div className={styles.apiSection}>
+              <h4>API Configuration</h4>
+              
+              {/* Quick Setup Section */}
+              <div className={styles.quickSetup}>
+                <h5>Quick Setup</h5>
+                <div className={styles.methodTemplates}>
+                  <label className={styles.subLabel}>Method Templates:</label>
+                  <div className={styles.templateButtons}>
+                    {['GET', 'POST', 'PUT'].map(method => (
+                      <button
+                        key={method}
+                        type="button"
+                        onClick={() => applyMethodTemplate(method)}
+                        className={`${styles.templateButton} ${
+                          selected.data.apiMethod === method ? styles.active : ''
+                        }`}
+                      >
+                        {method}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>API URL *</label>
+                <input
+                  type="url"
+                  value={selected.data.apiUrl || ''}
+                  onChange={(e) => updateSelected('apiUrl', e.target.value)}
+                  placeholder="https://api.example.com/endpoint"
+                  className={styles.input}
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>HTTP Method</label>
+                <select
+                  value={selected.data.apiMethod || 'GET'}
+                  onChange={(e) => updateSelected('apiMethod', e.target.value)}
+                  className={styles.input}
+                >
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                  <option value="PUT">PUT</option>
+                  <option value="DELETE">DELETE</option>
+                  <option value="PATCH">PATCH</option>
+                </select>
+              </div>
+
+              {/* Headers Section with Templates */}
+              <div className={styles.collapsibleSection}>
+                <div className={styles.sectionHeader} onClick={() => toggleSection('headers')}>
+                  <h5>Headers Configuration</h5>
+                  <span className={styles.expandIcon}>
+                    {expandedSections.headers ? '▲' : '▼'}
+                  </span>
+                </div>
+                {expandedSections.headers && (
+                  <div className={styles.sectionContent}>
+                    <div className={styles.headerTemplates}>
+                      <label className={styles.subLabel}>Common Headers:</label>
+                      <div className={styles.templateButtons}>
+                        {commonHeaders.map((template, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => applyHeaderTemplate(template)}
+                            className={styles.templateButton}
+                          >
+                            {template.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <textarea
+                      value={typeof selected.data.apiHeaders === 'string' 
+                        ? selected.data.apiHeaders 
+                        : JSON.stringify(selected.data.apiHeaders || {}, null, 2)}
+                      onChange={(e) => handleJsonChange('apiHeaders', e.target.value)}
+                      placeholder={'{\n  "Content-Type": "application/json",\n  "Authorization": "Bearer {{token}}"\n}'}
+                      rows={6}
+                      className={`${styles.textarea} ${jsonErrors.apiHeaders ? styles.error : ''}`}
+                    />
+                    {jsonErrors.apiHeaders && (
+                      <div className={styles.errorText}>❌ {jsonErrors.apiHeaders}</div>
+                    )}
+                    <div className={styles.helpText}>
+                      Enter headers as JSON object. Use &#123;&#123;variable&#125;&#125; for dynamic values.
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Request Body Section */}
+              <div className={styles.collapsibleSection}>
+                <div className={styles.sectionHeader} onClick={() => toggleSection('body')}>
+                  <h5>Request Body</h5>
+                  <span className={styles.expandIcon}>
+                    {expandedSections.body ? '▲' : '▼'}
+                  </span>
+                </div>
+                {expandedSections.body && (
+                  <div className={styles.sectionContent}>
+                    <div className={styles.variableSuggestions}>
+                      <label className={styles.subLabel}>Available Variables:</label>
+                      <div className={styles.variableButtons}>
+                        {commonVariables.map(variable => (
+                          <button
+                            key={variable}
+                            type="button"
+                            onClick={() => insertVariable(variable, 'apiBody')}
+                            className={styles.variableButton}
+                          >
+                            {`{{${variable}}}`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <textarea
+                      value={typeof selected.data.apiBody === 'string' 
+                        ? selected.data.apiBody 
+                        : JSON.stringify(selected.data.apiBody || {}, null, 2)}
+                      onChange={(e) => handleJsonChange('apiBody', e.target.value)}
+                      placeholder={'{\n  "user_id": "{{user_id}}",\n  "message": "{{user_input}}"\n}'}
+                      rows={8}
+                      className={`${styles.textarea} ${jsonErrors.apiBody ? styles.error : ''}`}
+                    />
+                    {jsonErrors.apiBody && (
+                      <div className={styles.errorText}>❌ {jsonErrors.apiBody}</div>
+                    )}
+                    <div className={styles.helpText}>
+                      Enter request body as JSON. Use &#123;&#123;variable&#125;&#125; placeholders for dynamic data.
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Response Mapping Section */}
+              <div className={styles.collapsibleSection}>
+                <div className={styles.sectionHeader} onClick={() => toggleSection('mapping')}>
+                  <h5>Response Mapping</h5>
+                  <span className={styles.expandIcon}>
+                    {expandedSections.mapping ? '▲' : '▼'}
+                  </span>
+                </div>
+                {expandedSections.mapping && (
+                  <div className={styles.sectionContent}>
+                    <textarea
+                      value={typeof selected.data.apiResponseMapping === 'string' 
+                        ? selected.data.apiResponseMapping 
+                        : JSON.stringify(selected.data.apiResponseMapping || {}, null, 2)}
+                      onChange={(e) => handleJsonChange('apiResponseMapping', e.target.value)}
+                      placeholder={'{\n  "user_name": "data.user.name",\n  "status": "status"\n}'}
+                      rows={6}
+                      className={`${styles.textarea} ${jsonErrors.apiResponseMapping ? styles.error : ''}`}
+                    />
+                    {jsonErrors.apiResponseMapping && (
+                      <div className={styles.errorText}>❌ {jsonErrors.apiResponseMapping}</div>
+                    )}
+                    <div className={styles.helpText}>
+                      Map API response fields to variables. Use dot notation for nested objects.
+                      Access mapped data in content as &#123;&#123;api.user_name&#125;&#125;
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Success Message</label>
+                <div className={styles.variableSuggestions}>
+                  <label className={styles.subLabel}>API Variables:</label>
+                  <div className={styles.variableButtons}>
+                    {commonVariables.map(variable => (
+                      <button
+                        key={variable}
+                        type="button"
+                        onClick={() => insertVariable(`api.${variable}`, 'content')}
+                        className={styles.variableButton}
+                      >
+                        {`{{api.${variable}}}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <textarea
+                  value={selected.data.content || ''}
+                  onChange={(e) => updateSelected('content', e.target.value)}
+                  placeholder={`API call successful! Retrieved user: {{api.user_name}}`}
+                  rows={3}
+                  className={styles.textarea}
+                />
+                <div className={styles.helpText}>
+                  Message to show after successful API call. Use &#123;&#123;api.variable_name&#125;&#125; for mapped data.
+                </div>
+              </div>
+
+              {/* Test API Button */}
+              <div className={styles.formGroup}>
+                <button
+                  type="button"
+                  className={styles.testApiButton}
+                  onClick={() => testApiConfiguration(selected)}
+                  disabled={!selected.data.apiUrl || testingApi}
+                >
+                  {testingApi ? 'Testing API...' : 'Test API Configuration'}
+                </button>
+                <div className={styles.helpText}>
+                  Test your API configuration with current settings
+                </div>
+              </div>
+
+              {/* API Test Results */}
+              {apiTestResult && (
+                <div className={styles.collapsibleSection}>
+                  <div className={styles.sectionHeader} onClick={() => toggleSection('testResults')}>
+                    <h5>API Test Results</h5>
+                    <span className={styles.expandIcon}>
+                      {expandedSections.testResults ? '▲' : '▼'}
+                    </span>
+                  </div>
+                  {expandedSections.testResults && (
+                    <div className={styles.sectionContent}>
+                      <div className={`${styles.resultBox} ${apiTestResult.success ? styles.success : styles.error}`}>
+                        <strong>{apiTestResult.message}</strong>
+                        {apiTestResult.success ? (
+                          <div className={styles.resultDetails}>
+                            <div><strong>Status Code:</strong> {apiTestResult.status}</div>
+                            {apiTestResult.extracted && Object.keys(apiTestResult.extracted).length > 0 && (
+                              <div>
+                                <strong>Extracted Data:</strong>
+                                <pre className={styles.resultPre}>
+                                  {JSON.stringify(apiTestResult.extracted, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                            {apiTestResult.data && (
+                              <div>
+                                <strong>Full Response:</strong>
+                                <pre className={styles.resultPre}>
+                                  {JSON.stringify(apiTestResult.data, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className={styles.resultDetails}>
+                            <div><strong>Error:</strong> {apiTestResult.error}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           <div className={styles.actionButtons}>

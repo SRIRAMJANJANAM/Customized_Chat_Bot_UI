@@ -27,7 +27,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
   const [editPathName, setEditPathName] = useState('');
   const [editPathDescription, setEditPathDescription] = useState('');
 
-
   const testEmailConfiguration = async (node) => {
     if (!selected.data.emailSenderEmail || !selected.data.emailRecipients) {
       alert('Please configure sender email and recipients first');
@@ -35,7 +34,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     }
 
     try {
-      // Use the API function instead of direct fetch
       const response = await API.testEmailConfiguration(
         botId,
         node.id,
@@ -67,6 +65,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         trigger_path: 'trigger_path',
         google_sheet: 'google_sheet',
         send_email: 'send_email',
+        api_call: 'api_call',
       }[n.node_type] || n.node_type;
 
       let label = isPath
@@ -74,6 +73,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         : (n.node_type === 'trigger_path'
             ? `Trigger Path: ${n.triggered_path?.name || 'None'}`
             : n.label || `${n.node_type} ${n.id}`);
+      
       const formFields = (n.form_fields || []).map(field => {
         const fieldId = field.id || `field-${Date.now()}-${Math.random()}`;
         const attributeName = field.attribute_name || field.attributeName || field.name || '';
@@ -118,6 +118,14 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         }
       }
 
+      if (n.node_type === 'api_call') {
+        if (n.api_url) {
+          label = `API: ${n.api_method || 'GET'} ${n.api_url.substring(0, 30)}...`;
+        } else {
+          label = 'API Call (not configured)';
+        }
+      }
+
       return {
         id: String(n.id),
         position: { x: n.x, y: n.y },
@@ -141,13 +149,19 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
           formTitle: n.form_title || (n.content ? '' : 'Please fill out the form below:'),
           formDescription: n.form_description || '',
           submitButtonText: n.submit_button_text || 'Submit Form',
-          // Email fields
+          // Email 
           emailSenderName: n.email_sender_name || '',
           emailSenderEmail: n.email_sender_email || '',
           emailRecipients: n.email_recipients || '',
           emailSubject: n.email_subject || '',
           emailBody: n.email_body || '',
-          emailBodyType: n.email_body_type || 'custom'
+          emailBodyType: n.email_body_type || 'custom',
+          // API 
+          apiUrl: n.api_url || null,
+          apiMethod: n.api_method || 'GET',
+          apiHeaders: n.api_headers || {},
+          apiBody: n.api_body || {},
+          apiResponseMapping: n.api_response_mapping || {},
         },
         type: 'default',
         _ntype: n.node_type,
@@ -304,6 +318,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
       trigger_path: 'trigger_path',
       google_sheet: 'google_sheet',
       send_email: 'send_email',
+      api_call: 'api_call',
     }[type] || type;
 
     const triggeredPath = activePath ? null : null;
@@ -319,6 +334,7 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
       trigger_path: 'Select a path to trigger...',
       google_sheet: '', 
       send_email: '',
+      api_call: 'API call executed successfully',
     }[type] || '';
 
     const defaultWidth = type === 'image' ? 200 : null;
@@ -366,6 +382,8 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
             ? 'Google Sheet Form'
             : type === 'send_email'
             ? 'Send Email'
+            : type === 'api_call'
+            ? 'API Call'
             : `${type} ${id}`,
         content: defaultContent,
         nodeType: type,
@@ -385,13 +403,19 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         formTitle: type === 'google_sheet' ? 'Please fill out the form below:' : '',
         formDescription: '',
         submitButtonText: 'Submit Form',
-        // Email defaults
+        // Email 
         emailSenderName: '',
         emailSenderEmail: '',
         emailRecipients: '',
         emailSubject: '',
         emailBody: '',
-        emailBodyType: 'custom'
+        emailBodyType: 'custom',
+        // API 
+        apiUrl: type === 'api_call' ? '' : null,
+        apiMethod: type === 'api_call' ? 'GET' : null,
+        apiHeaders: type === 'api_call' ? {} : null,
+        apiBody: type === 'api_call' ? {} : null,
+        apiResponseMapping: type === 'api_call' ? {} : null,
       },
       _ntype: backendNodeType,
       pathId: activePath ? activePath.id : null,
@@ -708,13 +732,19 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
               form_title: n.data.formTitle,
               form_description: n.data.formDescription,
               submit_button_text: n.data.submitButtonText,
-              // Email data
+              // Email 
               email_sender_name: n.data.emailSenderName || '',
               email_sender_email: n.data.emailSenderEmail || '',
               email_recipients: n.data.emailRecipients || '',
               email_subject: n.data.emailSubject || '',
               email_body: n.data.emailBody || '',
-              email_body_type: n.data.emailBodyType || 'custom'
+              email_body_type: n.data.emailBodyType || 'custom',
+              // API 
+              api_url: n.data.apiUrl || null,
+              api_method: n.data.apiMethod || 'GET',
+              api_headers: n.data.apiHeaders || {},
+              api_body: n.data.apiBody || {},
+              api_response_mapping: n.data.apiResponseMapping || {},
             },
           }))
         )
@@ -732,7 +762,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
         )
       );
 
-      // Fixed file upload processing for path graph
       for (const n of pathNodes) {
         if (
           (n._ntype === 'image' || n._ntype === 'file_upload') &&
@@ -764,102 +793,108 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
   };
 
   const saveGraph = async () => {
-    if (activePath) {
-      await savePathGraph();
-      return;
-    }
+  if (activePath) {
+    await savePathGraph();
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const formData = new FormData();
+  setLoading(true);
+  try {
+    const formData = new FormData();
 
-      formData.append(
-        'nodes',
-        JSON.stringify(
-          mainNodes.map((n) => ({
-            id: n.id,
-            _ntype: n._ntype,
-            position: n.position,
-            triggered_path_id: n._ntype === 'trigger_path' ? n.data.triggeredPath?.id || null : null,
-            data: {
-              label: n.data.label,
-              content: n.data.content,
-              width: n.data.width,
-              height: n.data.height,
-              fileName: n.data.fileName,
-              fileType: n.data.fileType,
-              fileContent: n.data.fileContent,
-              options: n.data.options || [],
-              options_display_style: n.data.optionsDisplayStyle || 'dropdown',
-              google_sheet_url: n.data.googleSheetUrl || null,
-              google_sheet_name: n.data.googleSheetName || null,
-              google_sheet_headers: n.data.googleSheetHeaders || null,
-              google_sheet_data_mapping: n.data.googleSheetDataMapping || null,
-              form_fields: n.data.formFields?.map(field => ({
-                id: field.id,
-                label: field.label,
-                attribute_name: field.attributeName,
-                type: field.type,
-                required: field.required,
-                placeholder: field.placeholder,
-                options: field.options,
-                validation: field.validation,
-                description: field.description
-              })) || [],
-              form_title: n.data.formTitle,
-              form_description: n.data.formDescription,
-              submit_button_text: n.data.submitButtonText,
-              // Email data
-              email_sender_name: n.data.emailSenderName || '',
-              email_sender_email: n.data.emailSenderEmail || '',
-              email_recipients: n.data.emailRecipients || '',
-              email_subject: n.data.emailSubject || '',
-              email_body: n.data.emailBody || '',
-              email_body_type: n.data.emailBodyType || 'custom'
-            },
-          }))
-        )
-      );
+    formData.append(
+      'nodes',
+      JSON.stringify(
+        mainNodes.map((n) => ({
+          id: n.id,
+          _ntype: n._ntype,
+          position: n.position,
+          triggered_path_id: n._ntype === 'trigger_path' ? n.data.triggeredPath?.id || null : null,
+          data: {
+            label: n.data.label,
+            content: n.data.content,
+            width: n.data.width,
+            height: n.data.height,
+            fileName: n.data.fileName,
+            fileType: n.data.fileType,
+            fileContent: n.data.fileContent,
+            options: n.data.options || [],
+            options_display_style: n.data.optionsDisplayStyle || 'dropdown',
+            google_sheet_url: n.data.googleSheetUrl || null,
+            google_sheet_name: n.data.googleSheetName || null,
+            google_sheet_headers: n.data.googleSheetHeaders || null,
+            google_sheet_data_mapping: n.data.googleSheetDataMapping || null,
+            form_fields: n.data.formFields?.map(field => ({
+              id: field.id,
+              label: field.label,
+              attribute_name: field.attributeName,
+              type: field.type,
+              required: field.required,
+              placeholder: field.placeholder,
+              options: field.options,
+              validation: field.validation,
+              description: field.description
+            })) || [],
+            form_title: n.data.formTitle,
+            form_description: n.data.formDescription,
+            submit_button_text: n.data.submitButtonText,
+            // Email fields
+            email_sender_name: n.data.emailSenderName || '',
+            email_sender_email: n.data.emailSenderEmail || '',
+            email_recipients: n.data.emailRecipients || '',
+            email_subject: n.data.emailSubject || '',
+            email_body: n.data.emailBody || '',
+            email_body_type: n.data.emailBodyType || 'custom',
+            // API fields - ADD THIS SECTION
+            api_url: n.data.apiUrl || null,
+            api_method: n.data.apiMethod || 'GET',
+            api_headers: n.data.apiHeaders || {},
+            api_body: n.data.apiBody || {},
+            api_response_mapping: n.data.apiResponseMapping || {},
+          },
+        }))
+      )
+    );
 
-      formData.append(
-        'edges',
-        JSON.stringify(
-          mainEdges.map((e) => ({
-            id: e.id,
-            source: e.source,
-            target: e.target,
-            label: e.label || '+',
-          }))
-        )
-      );
+    formData.append(
+      'edges',
+      JSON.stringify(
+        mainEdges.map((e) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          label: e.label || '+',
+        }))
+      )
+    );
 
-      // Fixed file upload processing for main graph
-      for (const n of mainNodes) {
-        if (
-          (n._ntype === 'image' || n._ntype === 'file_upload') &&
-          n.data.fileContent?.startsWith('data:')
-        ) {
-          try {
-            const response = await fetch(n.data.fileContent);
-            const blob = await response.blob();
-            formData.append(n.id, blob, n.data.fileName || `file-${n.id}`);
-          } catch (error) {
-            console.error('Error processing file for node', n.id, error);
-          }
+    // File upload processing...
+    for (const n of mainNodes) {
+      if (
+        (n._ntype === 'image' || n._ntype === 'file_upload') &&
+        n.data.fileContent?.startsWith('data:')
+      ) {
+        try {
+          const response = await fetch(n.data.fileContent);
+          const blob = await response.blob();
+          formData.append(n.id, blob, n.data.fileName || `file-${n.id}`);
+        } catch (error) {
+          console.error('Error processing file for node', n.id, error);
         }
       }
-
-      await API.post(`/chatbots/${botId}/save_graph/`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      alert('Graph saved successfully!');
-    } catch (err) {
-      console.error('Save error:', err);
-      alert('Save error: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setLoading(false);
     }
-  };
+
+    await API.post(`/chatbots/${botId}/save_graph/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    alert('Graph saved successfully!');
+  } catch (err) {
+    console.error('Save error:', err);
+    alert('Save error: ' + (err.response?.data?.message || err.message));
+  } finally {
+    setLoading(false);
+  }
+};
 
   return {
     mainNodes, setMainNodes, onMainNodesChange,
@@ -910,6 +945,6 @@ export const useBuilderLogic = (botId, searchParams, setSearchParams, genId) => 
     closePathBuilder,
     savePathGraph,
     saveGraph,
-    testEmailConfiguration // Add this to the return object
+    testEmailConfiguration
   };
 };

@@ -826,11 +826,20 @@
 }
 
 .formField {
-  background: #f8f9fa;
+  background: #001d3a;
   border: 1px solid #e9ecef;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 16px;
+}
+.formInput{
+  background-color: white;
+  border: 1px solid red;
+  width: 100%;
+  height: 100%;
+  padding: 2%;
+  color: black;
+  border-radius: 8px;
 }
 
 .formField:hover {
@@ -4766,4 +4775,421 @@ p {
 
 .testEmailButton.pulse {
   animation: pulse 2s infinite;
+}
+
+
+
+
+
+
+
+
+
+
+/* Builder.module.css - API Node Specific Styles */
+
+/* API Section Container */
+.apiSection {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.apiSection h4 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 8px;
+}
+
+/* Quick Setup Section */
+.quickSetup {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.quickSetup h5 {
+  margin: 0 0 12px 0;
+  color: #495057;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.methodTemplates {
+  margin-bottom: 10px;
+}
+
+.templateButtons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.templateButton {
+  padding: 8px 16px;
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  background: white;
+  color: #007bff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.templateButton:hover {
+  background: #007bff;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.templateButton.active {
+  background: #007bff;
+  color: white;
+}
+
+/* Collapsible Sections */
+.collapsibleSection {
+  margin-bottom: 15px;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  background: white;
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.sectionHeader:hover {
+  background: #e9ecef;
+}
+
+.sectionHeader h5 {
+  margin: 0;
+  color: #495057;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.expandIcon {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.sectionContent {
+  padding: 15px;
+}
+
+/* Header Templates */
+.headerTemplates {
+  margin-bottom: 15px;
+}
+
+.headerTemplates .templateButtons {
+  margin-top: 8px;
+}
+
+/* Variable Suggestions */
+.variableSuggestions {
+  margin-bottom: 15px;
+}
+
+.variableButtons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.variableButton {
+  padding: 4px 8px;
+  border: 1px solid #28a745;
+  border-radius: 3px;
+  background: white;
+  color: #28a745;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: monospace;
+  transition: all 0.2s ease;
+}
+
+.variableButton:hover {
+  background: #28a745;
+  color: white;
+}
+
+/* Form Elements for API */
+.formGroup {
+  margin-bottom: 20px;
+}
+
+.apiSection .label {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 8px;
+}
+
+.apiSection .subLabel {
+  color: #6c757d;
+  margin-bottom: 6px;
+}
+
+.apiSection .input {
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.apiSection .input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.apiSection .textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  resize: vertical;
+  min-height: 120px;
+  transition: border-color 0.2s ease;
+}
+
+.apiSection .textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.apiSection .textarea.error {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+/* Help Text */
+.helpText {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.helpText ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.helpText li {
+  margin-bottom: 4px;
+}
+
+.helpText code {
+  background: #e9ecef;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 11px;
+  color: #495057;
+}
+
+.errorText {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 5px;
+  font-weight: 500;
+}
+
+/* Test API Button */
+.testApiButton {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+.testApiButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4);
+}
+
+.testApiButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.testApiButton:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* API Test Results */
+.resultBox {
+  padding: 16px;
+  border-radius: 6px;
+  border-left: 4px solid;
+  margin-top: 10px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.resultBox.success {
+  background-color: #d4edda;
+  border-left-color: #28a745;
+  color: #155724;
+}
+
+.resultBox.error {
+  background-color: #f8d7da;
+  border-left-color: #dc3545;
+  color: #721c24;
+}
+
+.resultDetails {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.resultDetails div {
+  margin-bottom: 8px;
+}
+
+.resultDetails strong {
+  color: inherit;
+}
+
+.resultPre {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  overflow-x: auto;
+  margin-top: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  line-height: 1.3;
+}
+
+/* JSON Syntax Highlighting (optional) */
+.resultPre {
+  color: #24292e;
+}
+
+.resultPre .string { color: #032f62; }
+.resultPre .number { color: #005cc5; }
+.resultPre .boolean { color: #e36209; }
+.resultPre .null { color: #d73a49; }
+.resultPre .key { color: #d73a49; }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .apiSection {
+    padding: 15px;
+    margin-top: 15px;
+  }
+  
+  .templateButtons {
+    flex-direction: column;
+  }
+  
+  .templateButton {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .variableButtons {
+    justify-content: center;
+  }
+  
+  .sectionContent {
+    padding: 12px;
+  }
+  
+  .testApiButton {
+    width: 100%;
+    padding: 14px 20px;
+  }
+}
+
+/* Loading State */
+.testApiButton:disabled {
+  position: relative;
+  overflow: hidden;
+}
+
+.testApiButton:disabled::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Scrollbar Styling for Code Areas */
+.apiSection .textarea::-webkit-scrollbar,
+.resultPre::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.apiSection .textarea::-webkit-scrollbar-track,
+.resultPre::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.apiSection .textarea::-webkit-scrollbar-thumb,
+.resultPre::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.apiSection .textarea::-webkit-scrollbar-thumb:hover,
+.resultPre::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }

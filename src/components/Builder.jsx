@@ -190,6 +190,14 @@ export default function Builder({ botId }) {
         newLabel = 'Send Email (not configured)';
       }
     }
+
+    else if (selected._ntype === 'api_call') {
+      if (selected.data.apiUrl) {
+        newLabel = `API: ${selected.data.apiMethod || 'GET'} ${selected.data.apiUrl.substring(0, 30)}...`;
+      } else {
+        newLabel = 'API Call (not configured)';
+      }
+    }
     if (selected.data.label !== newLabel) {
       updateSelected('label', newLabel);
     }

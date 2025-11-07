@@ -89,3 +89,8 @@ export const testEmailConfiguration = async (chatbotId, nodeId, testRecipient) =
 export const getSyncStatus = async (chatbotId) => {
   return await API.get(`/chatbots/${chatbotId}/sync_status/`);
 };
+
+// ==================== API NODE TESTING ====================
+export const testApiConfiguration = async (apiConfig) => {
+  return await API.post('/test-api/', apiConfig);
+};

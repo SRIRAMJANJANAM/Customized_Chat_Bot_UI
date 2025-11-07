@@ -19,7 +19,101 @@ export default function TestModal({ botId, onClose }) {
   const [formData, setFormData] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [currentFormNodeId, setCurrentFormNodeId] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
   const scrollRef = useRef(null);
+
+  // Validation functions
+  const validateFieldValue = (field, value) => {
+    if (field.required && (!value || value.toString().trim() === '')) {
+      return { isValid: false, message: `${field.label || 'This field'} is required` };
+    }
+
+    if (!value || value.toString().trim() === '') {
+      return { isValid: true }; // Empty optional field is valid
+    }
+
+    const stringValue = value.toString().trim();
+
+    switch (field.type) {
+      case 'email':
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(stringValue)) {
+          return { isValid: false, message: 'Please enter a valid email address' };
+        }
+        break;
+
+      case 'phone':
+        const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+        const cleanedValue = stringValue.replace(/[^\d+]/g, '');
+        if (!phoneRegex.test(cleanedValue)) {
+          return { isValid: false, message: 'Please enter a valid phone number' };
+        }
+        if (field.validation?.international && !stringValue.startsWith('+')) {
+          return { isValid: false, message: 'International numbers must start with +' };
+        }
+        break;
+
+      case 'number':
+        const numValue = parseFloat(stringValue);
+        if (isNaN(numValue)) {
+          return { isValid: false, message: 'Please enter a valid number' };
+        }
+        if (field.validation?.integerOnly && !Number.isInteger(numValue)) {
+          return { isValid: false, message: 'Only whole numbers are allowed' };
+        }
+        if (field.validation?.minValue !== undefined && numValue < field.validation.minValue) {
+          return { isValid: false, message: `Value must be at least ${field.validation.minValue}` };
+        }
+        if (field.validation?.maxValue !== undefined && numValue > field.validation.maxValue) {
+          return { isValid: false, message: `Value must be at most ${field.validation.maxValue}` };
+        }
+        break;
+
+      case 'text':
+        if (field.validation?.minLength && stringValue.length < (field.validation.minLengthValue || 1)) {
+          return { isValid: false, message: `Minimum length is ${field.validation.minLengthValue} characters` };
+        }
+        if (field.validation?.maxLength && stringValue.length > (field.validation.maxLengthValue || 100)) {
+          return { isValid: false, message: `Maximum length is ${field.validation.maxLengthValue} characters` };
+        }
+        if (field.validation?.pattern && field.validation.patternValue) {
+          try {
+            const regex = new RegExp(field.validation.patternValue);
+            if (!regex.test(stringValue)) {
+              return { isValid: false, message: 'Input does not match required format' };
+            }
+          } catch (error) {
+            console.error('Invalid regex pattern:', error);
+          }
+        }
+        break;
+
+      case 'date':
+        const dateValue = new Date(stringValue);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (field.validation?.beforeToday && dateValue >= today) {
+          return { isValid: false, message: 'Date must be before today' };
+        }
+        if (field.validation?.afterToday && dateValue <= today) {
+          return { isValid: false, message: 'Date must be after today' };
+        }
+        if (field.validation?.minDate && dateValue < new Date(field.validation.minDate)) {
+          return { isValid: false, message: `Date must be after ${field.validation.minDate}` };
+        }
+        if (field.validation?.maxDate && dateValue > new Date(field.validation.maxDate)) {
+          return { isValid: false, message: `Date must be before ${field.validation.maxDate}` };
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    return { isValid: true };
+  };
 
   // Initialize session ID
   useEffect(() => {
@@ -43,6 +137,8 @@ export default function TestModal({ botId, onClose }) {
       setShowForm(false);
       setFormFields([]);
       setFormData({});
+      setFieldErrors({});
+      setTouchedFields({});
       return;
     }
 
@@ -75,6 +171,8 @@ export default function TestModal({ botId, onClose }) {
         setFormFields(fields);
         setShowForm(true);
         setCurrentFormNodeId(lastMessage.node_id || currentNodeId);
+        setFieldErrors({});
+        setTouchedFields({});
         
         // Initialize form data
         const initialFormData = {};
@@ -88,6 +186,8 @@ export default function TestModal({ botId, onClose }) {
       // Only hide form if we're not in the middle of a form interaction
       if (!lastMessage.form_fields && !lastMessage.content?.form_fields) {
         setShowForm(false);
+        setFieldErrors({});
+        setTouchedFields({});
       }
     }
   }, [transcript, currentNodeId, formData]);
@@ -325,35 +425,95 @@ export default function TestModal({ botId, onClose }) {
     }
   };
 
-  // Handle form submission
+  // Handle form input changes - Only mark as touched, don't validate or clear errors
+  const handleFormInputChange = (fieldName, value, field) => {
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
+
+    // Mark field as touched
+    setTouchedFields(prev => ({
+      ...prev,
+      [fieldName]: true
+    }));
+
+    // DON'T validate or clear errors on change - only on blur
+    // This prevents errors from disappearing while user is typing
+  };
+
+  // Validate field on blur - errors persist until field becomes valid
+  const handleFieldBlur = (field) => {
+    const fieldKey = field.attributeName || field.attribute_name || field.name;
+    
+    // Mark field as touched
+    setTouchedFields(prev => ({
+      ...prev,
+      [fieldKey]: true
+    }));
+
+    const value = formData[fieldKey];
+    const validation = validateFieldValue(field, value);
+    
+    if (!validation.isValid) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [fieldKey]: validation.message
+      }));
+    } else {
+      // Only clear error when validation passes
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldKey];
+        return newErrors;
+      });
+    }
+  };
+
+  // Enhanced form submission handler with validation
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (running) return;
 
-    // Validate required fields
-    const missingFields = formFields.filter(field => {
+    // Mark all fields as touched to show all errors
+    const allTouched = {};
+    const errors = {};
+    let hasErrors = false;
+
+    formFields.forEach(field => {
       const fieldKey = field.attributeName || field.attribute_name || field.name;
-      return field.required && !formData[fieldKey]?.toString().trim();
+      allTouched[fieldKey] = true;
+      
+      // Validate each field
+      const value = formData[fieldKey];
+      const validation = validateFieldValue(field, value);
+      
+      if (!validation.isValid) {
+        errors[fieldKey] = validation.message;
+        hasErrors = true;
+      }
     });
-    
-    if (missingFields.length > 0) {
-      alert(`Please fill in required fields: ${missingFields.map(f => f.label || f.name).join(', ')}`);
+
+    setTouchedFields(allTouched);
+    setFieldErrors(errors);
+
+    if (hasErrors) {
+      // Scroll to first error
+      const firstErrorField = Object.keys(errors)[0];
+      const errorElement = document.querySelector(`[data-field="${firstErrorField}"]`);
+      if (errorElement) {
+        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      
+      // Show alert with error count
+      const errorCount = Object.keys(errors).length;
+      alert(`Please fix ${errorCount} error${errorCount > 1 ? 's' : ''} before submitting the form.`);
       return;
     }
 
     setRunning(true);
 
     try {
-      // const userMessage = "Form submitted";
-      // setTranscript(prev => [...prev, {
-      //   from: 'user',
-      //   type: 'text',
-      //   text: userMessage,
-      //   timestamp: new Date().toISOString(),
-      //   id: `form-submit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      //   form_data: formData
-      // }]);
-      
       const payload = {
         user_inputs: { 
           input: '',
@@ -400,6 +560,8 @@ export default function TestModal({ botId, onClose }) {
       setShowForm(false);
       setFormFields([]);
       setFormData({});
+      setFieldErrors({});
+      setTouchedFields({});
       setMessage('');
 
     } catch (error) {
@@ -542,14 +704,6 @@ export default function TestModal({ botId, onClose }) {
     }
   };
 
-  // Handle form input changes
-  const handleFormInputChange = (fieldName, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [fieldName]: value
-    }));
-  };
-
   // Format timestamp
   const formatTimestamp = (isoString) => {
     try {
@@ -629,76 +783,95 @@ export default function TestModal({ botId, onClose }) {
   // Render form field based on type
   const renderFormField = (field) => {
     const fieldKey = field.attributeName || field.attribute_name || field.name;
+    const error = fieldErrors[fieldKey];
+    const touched = touchedFields[fieldKey];
+    const showError = touched && error;
+    
     const commonProps = {
       value: formData[fieldKey] || '',
-      onChange: (e) => handleFormInputChange(fieldKey, e.target.value),
+      onChange: (e) => handleFormInputChange(fieldKey, e.target.value, field),
+      onBlur: () => handleFieldBlur(field),
       placeholder: field.placeholder || '',
       required: field.required || false,
       disabled: running,
-      className: 'form-field-input'
+      className: `form-field-input ${showError ? 'error' : ''}`,
+      'data-field': fieldKey
     };
 
-    switch (field.type) {
-      case 'textarea':
-        return <textarea {...commonProps} rows={4} />;
-      
-      case 'select':
-        return (
-          <select {...commonProps}>
-            <option value="">Select an option...</option>
-            {field.options?.map((option, index) => (
-              <option key={index} value={option}>{option}</option>
-            ))}
-          </select>
-        );
-      
-      case 'checkbox':
-        return (
-          <label className="checkbox-field">
-            <input
-              type="checkbox"
-              checked={!!formData[fieldKey]}
-              onChange={(e) => handleFormInputChange(fieldKey, e.target.checked)}
-              disabled={running}
-            />
-            <span>{field.placeholder || field.label}</span>
-          </label>
-        );
-      
-      case 'radio':
-        return (
-          <div className="radio-group">
-            {field.options?.map((option, index) => (
-              <label key={index} className="radio-option">
-                <input
-                  type="radio"
-                  name={fieldKey}
-                  value={option}
-                  checked={formData[fieldKey] === option}
-                  onChange={(e) => handleFormInputChange(fieldKey, e.target.value)}
-                  disabled={running}
-                />
-                <span>{option}</span>
-              </label>
-            ))}
-          </div>
-        );
-      
-      case 'email':
-        return <input type="email" {...commonProps} />;
-      
-      case 'number':
-        return <input type="number" {...commonProps} />;
-      
-      case 'date':
-        return <input type="date" {...commonProps} />;
-      
-      case 'tel':
-        return <input type="tel" {...commonProps} />;
-      
-      default:
-        return <input type="text" {...commonProps} />;
-    }
+    const fieldElement = (() => {
+      switch (field.type) {
+        case 'textarea':
+          return <textarea {...commonProps} rows={4} />;
+        
+        case 'select':
+          return (
+            <select {...commonProps}>
+              <option value="">Select an option...</option>
+              {field.options?.map((option, index) => (
+                <option key={index} value={option}>{option}</option>
+              ))}
+            </select>
+          );
+        
+        case 'checkbox':
+          return (
+            <label className={`checkbox-field ${showError ? 'error' : ''}`}>
+              <input
+                type="checkbox"
+                checked={!!formData[fieldKey]}
+                onChange={(e) => handleFormInputChange(fieldKey, e.target.checked, field)}
+                onBlur={() => handleFieldBlur(field)}
+                disabled={running}
+                data-field={fieldKey}
+              />
+              <span>{field.placeholder || field.label}</span>
+            </label>
+          );
+        
+        case 'radio':
+          return (
+            <div className={`radio-group ${showError ? 'error' : ''}`}>
+              {field.options?.map((option, index) => (
+                <label key={index} className="radio-option">
+                  <input
+                    type="radio"
+                    name={fieldKey}
+                    value={option}
+                    checked={formData[fieldKey] === option}
+                    onChange={(e) => handleFormInputChange(fieldKey, e.target.value, field)}
+                    onBlur={() => handleFieldBlur(field)}
+                    disabled={running}
+                    data-field={fieldKey}
+                  />
+                  <span>{option}</span>
+                </label>
+              ))}
+            </div>
+          );
+        
+        case 'email':
+          return <input type="email" {...commonProps} />;
+        
+        case 'number':
+          return <input type="number" {...commonProps} />;
+        
+        case 'date':
+          return <input type="date" {...commonProps} />;
+        
+        case 'phone':
+          return <input type="tel" {...commonProps} />;
+        
+        default:
+          return <input type="text" {...commonProps} />;
+      }
+    })();
+
+    return (
+      <div className="form-field-wrapper">
+        {fieldElement}
+        {showError && <div className="field-error">{error}</div>}
+      </div>
+    );
   };
 
   return (
@@ -790,7 +963,7 @@ export default function TestModal({ botId, onClose }) {
                   {formFields.map((field, index) => {
                     const fieldKey = field.attributeName || field.attribute_name || field.name;
                     return (
-                      <div key={fieldKey || index} className="form-field">
+                      <div key={fieldKey || index} className="form-field" data-field={fieldKey}>
                         <label className="form-field-label">
                           {field.label || field.name || 'Field'}
                           {field.required && <span className="required-asterisk">*</span>}
@@ -896,7 +1069,7 @@ export default function TestModal({ botId, onClose }) {
       {fullscreenImage && (
         <div className="fullscreen-overlay" onClick={() => setFullscreenImage(null)}>
           <div className="fullscreen-content" onClick={(e) => e.stopPropagation()}>
-            <img src={fullscreenImage} alt="fullscreen" />
+            <img src={fullscreenImage} alt="fullscreen" className="fullscreen-image"/>
             <button className="close-fullscreen" onClick={() => setFullscreenImage(null)}>
               ×
             </button>

@@ -55,6 +55,7 @@ export default function NodeSidebar({ addNode }) {
       color: '#9C27B0',
       items: [
         { type: 'google_sheet', label: 'Send to Google Sheet', icon: '📗', description: 'Save data to Google Sheets' },
+        { type: 'api_call', label: 'API Call', icon: '🔗', description: 'Make HTTP API requests' },
       ]
     },
     {
