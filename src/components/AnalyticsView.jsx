@@ -28,40 +28,6 @@ const AnalyticsView = ({ botId }) => {
     }
   };
 
-  const getExactTimeFromIdentifier = (userIdentifier) => {
-    if (!userIdentifier) return null;
-    
-    try {
-      const timeMatch = userIdentifier.match(/(\d{3,4})(AM|PM)/i);
-      if (timeMatch) {
-        const timeDigits = timeMatch[1];
-        const period = timeMatch[2].toUpperCase();
-
-        if (timeDigits.length === 3) {
-          const hour = timeDigits.substring(0, 1);
-          const minute = timeDigits.substring(1, 3);
-          return `0${hour}:${minute} ${period}`;
-        }
-        else if (timeDigits.length === 4) {
-          const hour = timeDigits.substring(0, 2);
-          const minute = timeDigits.substring(2, 4);
-          return `${hour}:${minute} ${period}`;
-        }
-      }
-      const altMatch = userIdentifier.match(/(\d{2})(\d{2})(AM|PM)/i);
-      if (altMatch) {
-        const hour = altMatch[1];
-        const minute = altMatch[2];
-        const period = altMatch[3].toUpperCase();
-        return `${hour}:${minute} ${period}`;
-      }
-    } catch (err) {
-      console.error('Error parsing time from identifier:', err);
-    }
-    
-    return null;
-  };
-
   const fetchAnalytics = async () => {
     setLoading(true);
     setError(null);
@@ -76,45 +42,46 @@ const AnalyticsView = ({ botId }) => {
         const processedData = {
           ...response.data,
           engagement_data: response.data.engagement_data.map(item => {
-            console.log('Processing item:', item); 
+            console.log('Processing item:', item);
+            
+            // Use access_times array for exact timestamps
             let exactTime = null;
-            if (item.timestamp) {
-              exactTime = getExactTimeFromTimestamp(item.timestamp);
-              console.log('Time from timestamp:', exactTime);
+            if (item.access_times && item.access_times.length > 0) {
+              exactTime = getExactTimeFromTimestamp(item.access_times[0]);
+              console.log('Time from access_times:', exactTime);
             }
-
-            if (!exactTime && item.time) {
-              if (item.time.includes(':')) {
-                const [hours, minutes] = item.time.split(':');
-                const hourNum = parseInt(hours);
-                const period = hourNum >= 12 ? 'PM' : 'AM';
-                const hour12 = hourNum % 12 || 12;
-                exactTime = `${hour12}:${minutes} ${period}`;
-              } else {
-                exactTime = item.time;
-              }
-              console.log('Time from time field:', exactTime); 
+            
+            // Fallback to first_access
+            if (!exactTime && item.first_access) {
+              exactTime = getExactTimeFromTimestamp(item.first_access);
+              console.log('Time from first_access:', exactTime);
             }
-            if (!exactTime && item.user_identifier) {
-              exactTime = getExactTimeFromIdentifier(item.user_identifier);
-              console.log('Time from identifier:', exactTime); 
+            
+            // Fallback to last_activity
+            if (!exactTime && item.last_activity) {
+              exactTime = getExactTimeFromTimestamp(item.last_activity);
+              console.log('Time from last_activity:', exactTime);
             }
+            
+            // Final fallback
             if (!exactTime) {
               exactTime = new Date().toLocaleTimeString('en-US', {
                 hour: '2-digit',
                 minute: '2-digit',
                 hour12: true
               });
-              console.log('Time fallback to current:', exactTime); 
+              console.log('Time fallback to current:', exactTime);
             }
 
             return {
               ...item,
               exact_time: exactTime,
-              timestamp: item.timestamp || new Date().toISOString(),
-              user_identifier: item.user_identifier || `user_${Math.random().toString(36).substr(2, 9)}`,
+              timestamp: item.first_access || item.last_activity || new Date().toISOString(),
+              user_identifier: item.user_session || `user_${Math.random().toString(36).substr(2, 9)}`,
               message_count: item.message_count || 0,
-              session_duration: item.session_duration || 0
+              session_duration: item.session_duration || 0,
+              // Add access_times for tooltip display
+              access_times: item.access_times || []
             };
           })
         };
@@ -167,19 +134,20 @@ const AnalyticsView = ({ botId }) => {
                          messageCount > 5 ? 0.4 + (Math.random() * 0.4) : 
                          0.1 + (Math.random() * 0.3);
 
-        const timeForId = exactTime.replace(':', '').replace(' ', '');
-        const userIdentifier = `orai_RAM_${Math.floor(Math.random() * 9000) + 1000}_${timeForId}`;
+        const userIdentifier = `user_${i + 1}`;
         
         engagementData.push({
-          user_id: `user_${i + 1}`,
+          user_session: userIdentifier,
           user_identifier: userIdentifier,
           date: engagementTime.toISOString().split('T')[0],
-          time: exactTime, 
           exact_time: exactTime, 
           timestamp: engagementTime.toISOString(),
+          first_access: engagementTime.toISOString(),
+          last_activity: engagementTime.toISOString(),
           message_count: messageCount,
           intensity: intensity,
-          session_duration: Math.floor(Math.random() * 30) + 1
+          session_duration: Math.floor(Math.random() * 30) + 1,
+          access_times: [engagementTime.toISOString()]
         });
       }
 
@@ -199,7 +167,10 @@ const AnalyticsView = ({ botId }) => {
         avg_session_duration: (Math.random() * 5 + 2.5).toFixed(1),
         selected_date: date,
         period_start: new Date(selectedDateObj.setHours(0, 0, 0, 0)).toISOString(),
-        period_end: new Date(selectedDateObj.setHours(23, 59, 59, 999)).toISOString()
+        period_end: new Date(selectedDateObj.setHours(23, 59, 59, 999)).toISOString(),
+        hourly_distribution: Object.fromEntries(
+          Array.from({length: 24}, (_, i) => [`${i.toString().padStart(2, '0')}:00`, Math.floor(Math.random() * 5)])
+        )
       };
     } catch (err) {
       console.error('Mock data generation error:', err);
@@ -212,184 +183,220 @@ const AnalyticsView = ({ botId }) => {
         avg_session_duration: '0.0',
         selected_date: date,
         period_start: new Date().toISOString(),
-        period_end: new Date().toISOString()
+        period_end: new Date().toISOString(),
+        hourly_distribution: {}
       };
     }
   };
 
-  const EnhancedEngagementTooltip = () => {
-    if (!tooltip.visible || !tooltip.item) return null;
+const EnhancedEngagementTooltip = () => {
+  if (!tooltip.visible || !tooltip.item) return null;
+  
+  const { item } = tooltip;
+  const exactTime = item.exact_time || getExactTimeFromTimestamp(item.timestamp);
+  
+  // Function to get the display name - prioritize username fields
+  const getDisplayName = (userItem) => {
+    // Check for username fields in order of priority
+    if (userItem.username) return userItem.username;
+    if (userItem.user_name) return userItem.user_name;
+    if (userItem.display_name) return userItem.display_name;
+    if (userItem.name) return userItem.name;
     
-    const { item } = tooltip;
-    const exactTime = item.exact_time || item.time || getExactTimeFromTimestamp(item.timestamp);
-    
-    console.log('Tooltip item:', item); 
-    console.log('Exact time for tooltip:', exactTime); 
-    
-    return (
-      <div 
-        className={styles.tooltip}
-        style={{
-          position: 'absolute',
-          left: `${tooltip.position.x}px`,
-          top: `${tooltip.position.y}px`,
-          zIndex: 1000,
-          pointerEvents: 'none'
-        }}
-      >
-        <div className={styles.tooltipContent}>
-          <div className={styles.tooltipHeader}>
-            <div className={styles.tooltipUser}>
-              {item.user_identifier?.replace(/(orai_RAM_\d+).*/, '$1') || 'Unknown User'}
-            </div>
-            <div className={styles.tooltipTime}>
-              {exactTime || 'Unknown Time'}
-            </div>
-          </div>
-          
-          <div className={styles.tooltipStats}>
-            <div className={styles.tooltipStat}>
-              <span className={styles.statIcon}>💬</span>
-              <div className={styles.statDetails}>
-                <span className={styles.statLabel}>Messages:</span>
-                <span className={styles.statValue}>{item.message_count || 0}</span>
-              </div>
-            </div>
-            {/* <div className={styles.tooltipStat}>
-              <span className={styles.statIcon}>⏱️</span>
-              <div className={styles.statDetails}>
-                <span className={styles.statLabel}>Session:</span>
-                <span className={styles.statValue}>{item.session_duration || 0} min</span>
-              </div>
-            </div> */}
-          </div>
-          
-          <div className={styles.tooltipFooter}>
-            {item.message_count > 10 && (
-              <span className={styles.highEngagementBadge}>🎯 Highly Engaged</span>
-            )}
-            <span className={styles.triggerTime}>
-              Triggered at: {exactTime || 'Unknown Time'}
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const getEngagementDots = () => {
-    if (!analyticsData?.engagement_data || !Array.isArray(analyticsData.engagement_data)) {
-      return null;
+    // Fallback to user_identifier or user_session
+    if (userItem.user_identifier) {
+      // Remove 'user_' prefix if present for cleaner display
+      return userItem.user_identifier.replace(/^user_/, '');
+    }
+    if (userItem.user_session) {
+      return userItem.user_session.replace(/^user_/, '');
     }
     
-    const handleDotHover = (item, event) => {
-      try {
-        const dotElement = event.currentTarget;
-        const dotRect = dotElement.getBoundingClientRect();
-        const chartArea = chartAreaRef.current;
-        
-        if (!chartArea) return;
-        
-        const chartRect = chartArea.getBoundingClientRect();
-        
-        let x = dotRect.left - chartRect.left + (dotRect.width / 2);
-        let y = dotRect.top - chartRect.top - 10;
-        
-        const tooltipWidth = 200;
-        const tooltipHeight = 120;
-        
-        if (x + tooltipWidth > chartRect.width) {
-          x = chartRect.width - tooltipWidth - 10;
-        }
-        if (x < 0) {
-          x = 10;
-        }
-        if (y - tooltipHeight < 0) {
-          y = dotRect.bottom - chartRect.top + 10;
-        }
-        
-        setTooltip({
-          visible: true,
-          item,
-          position: { x, y }
-        });
-      } catch (err) {
-        console.error('Tooltip error:', err);
-      }
-    };
-
-    const handleDotLeave = () => {
-      setTooltip({ visible: false, item: null, position: { x: 0, y: 0 } });
-    };
-
-    return analyticsData.engagement_data.map((user, index) => {
-      try {
-        const messageCount = user.message_count || 0;
-        const size = 12 + (Math.min(messageCount / 30, 1) * 8);
-        const opacity = 0.4 + (Math.min(messageCount / 30, 1) * 0.6);
-        const baseColor = messageCount > 10 ? '94, 1, 89' : '54, 54, 56';
-        const colorIntensity = messageCount > 10 ? 1 : 0.7;
-        const userTime = new Date(user.timestamp);
-        const userHours = userTime.getHours();
-        const userMinutes = userTime.getMinutes();
-        
-        console.log(`User ${user.user_identifier}:`, {
-          timestamp: user.timestamp,
-          hours: userHours,
-          minutes: userMinutes,
-          time: user.time,
-          exact_time: user.exact_time
-        }); 
-        const totalMinutesInDay = 24 * 60;
-        const userMinutesInDay = (userHours * 60) + userMinutes;
-        const position = (userMinutesInDay / totalMinutesInDay) * 100;
-
-        const userHash = user.user_id ? user.user_id.split('_').pop() : index;
-        const verticalPosition = 10 + (parseInt(userHash) % 80);
-
-        return (
-          <div
-            key={`${user.user_id}-${index}`}
-            className={styles.engagementDot}
-            style={{
-              width: `${size}px`,
-              height: `${size}px`,
-              opacity: opacity,
-              backgroundColor: `rgba(${baseColor}, ${colorIntensity})`,
-              position: 'absolute',
-              left: `${Math.max(0, Math.min(100, position))}%`,
-              bottom: `${Math.max(5, Math.min(95, verticalPosition))}%`,
-              borderRadius: '50%',
-              cursor: 'pointer',
-              transform: 'translateX(-50%)',
-              transition: 'all 0.2s ease',
-              boxShadow: `0 2px 6px rgba(${baseColor}, ${colorIntensity * 0.4})`,
-              border: messageCount > 10 ? '2px solid #2264d1' : 'none',
-              zIndex: 1
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateX(-50%) scale(1.5)';
-              e.target.style.zIndex = '10';
-              e.target.style.boxShadow = `0 4px 12px rgba(${baseColor}, ${colorIntensity * 0.7})`;
-              handleDotHover(user, e);
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateX(-50%) scale(1)';
-              e.target.style.zIndex = '1';
-              e.target.style.boxShadow = `0 2px 6px rgba(${baseColor}, ${colorIntensity * 0.4})`;
-              handleDotLeave();
-            }}
-            onMouseMove={(e) => {
-              handleDotHover(user, e);
-            }}
-          />
-        );
-      } catch (err) {
-        console.error('Error rendering engagement dot:', err);
-        return null;
-      }
-    }).filter(Boolean);
+    return 'Unknown User';
   };
+
+  const displayName = getDisplayName(item);
+  
+  return (
+    <div 
+      className={styles.tooltip}
+      style={{
+        position: 'absolute',
+        left: `${tooltip.position.x}px`,
+        top: `${tooltip.position.y}px`,
+        zIndex: 1000,
+        pointerEvents: 'none'
+      }}
+    >
+      <div className={styles.tooltipContent}>
+        <div className={styles.tooltipHeader}>
+          {/* <div className={styles.tooltipUser}>
+            {displayName}
+          </div> */}
+          <div className={styles.tooltipTime}>
+            {exactTime || 'Unknown Time'}
+          </div>
+        </div>
+        
+        <div className={styles.tooltipStats}>
+          <div className={styles.tooltipStat}>
+            <span className={styles.statIcon}>💬</span>
+            <div className={styles.statDetails}>
+              <span className={styles.statLabel}>Messages:</span>
+              <span className={styles.statValue}>{item.message_count || 0}</span>
+            </div>
+          </div>
+          
+          {/* Add additional user info if available */}
+          {(item.email || item.user_id) && (
+            <div className={styles.tooltipStat}>
+              <span className={styles.statIcon}>👤</span>
+              <div className={styles.statDetails}>
+                <span className={styles.statLabel}>
+                  {item.email ? 'Email:' : 'User ID:'}
+                </span>
+                <span className={styles.statValue}>
+                  {item.email || item.user_id}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const getEngagementDots = () => {
+  if (!analyticsData?.engagement_data || !Array.isArray(analyticsData.engagement_data)) {
+    return null;
+  }
+  
+  // Group users by 30-minute intervals for better visualization
+  const usersByInterval = {};
+  analyticsData.engagement_data.forEach((user) => {
+    try {
+      const userTime = new Date(user.first_access || user.timestamp);
+      const hour = userTime.getHours();
+      const minute = userTime.getMinutes();
+      const interval = Math.floor(minute / 30); // 0 or 1 for each hour
+      const intervalKey = `${hour}-${interval}`;
+      
+      if (!usersByInterval[intervalKey]) {
+        usersByInterval[intervalKey] = [];
+      }
+      usersByInterval[intervalKey].push(user);
+    } catch (err) {
+      console.error('Error processing user time:', err);
+    }
+  });
+
+  const handleDotHover = (item, event) => {
+    try {
+      const dotElement = event.currentTarget;
+      const dotRect = dotElement.getBoundingClientRect();
+      const chartArea = chartAreaRef.current;
+      
+      if (!chartArea) return;
+      
+      const chartRect = chartArea.getBoundingClientRect();
+      
+      let x = dotRect.left - chartRect.left + (dotRect.width / 2);
+      let y = dotRect.top - chartRect.top - 10;
+      
+      const tooltipWidth = 200;
+      const tooltipHeight = 120;
+      
+      if (x + tooltipWidth > chartRect.width) {
+        x = chartRect.width - tooltipWidth - 10;
+      }
+      if (x < 0) {
+        x = 10;
+      }
+      if (y - tooltipHeight < 0) {
+        y = dotRect.bottom - chartRect.top + 10;
+      }
+      
+      setTooltip({
+        visible: true,
+        item,
+        position: { x, y }
+      });
+    } catch (err) {
+      console.error('Tooltip error:', err);
+    }
+  };
+
+  return analyticsData.engagement_data.map((user, index) => {
+    try {
+      const messageCount = user.message_count || 0;
+      const size = messageCount > 20 ? 16 : messageCount > 10 ? 14 : 12;
+      const baseColor = messageCount > 20 ? '220, 53, 69' : 
+                       messageCount > 10 ? '255, 193, 7' : 
+                       '40, 167, 69';
+      const opacity = 0.6 + (Math.min(messageCount / 30, 1) * 0.4);
+
+      // Calculate position
+      const userTime = new Date(user.first_access || user.timestamp);
+      const userHours = userTime.getHours();
+      const userMinutes = userTime.getMinutes();
+      const horizontalPosition = ((userHours * 60 + userMinutes) / (24 * 60)) * 100;
+
+      // Calculate vertical position based on grouping
+      const hour = userTime.getHours();
+      const minute = userTime.getMinutes();
+      const interval = Math.floor(minute / 30);
+      const intervalKey = `${hour}-${interval}`;
+      const intervalUsers = usersByInterval[intervalKey] || [];
+      const userIndexInInterval = intervalUsers.findIndex(u => 
+        u.user_session === user.user_session
+      );
+      const verticalPosition = 15 + ((userIndexInInterval / Math.max(1, intervalUsers.length - 1)) * 70);
+
+      return (
+        <div
+          key={`${user.user_session}-${index}`}
+          className={styles.engagementDot}
+          style={{
+            width: `${size}px`,
+            height: `${size}px`,
+            opacity: opacity,
+            backgroundColor: `rgba(${baseColor}, ${opacity})`,
+            position: 'absolute',
+            left: `${Math.max(0.5, Math.min(99.5, horizontalPosition))}%`,
+            bottom: `${Math.max(5, Math.min(85, verticalPosition))}%`,
+            borderRadius: '50%',
+            cursor: 'pointer',
+            transform: 'translateX(-50%)',
+            transition: 'all 0.3s ease',
+            boxShadow: `0 2px 8px rgba(${baseColor}, ${opacity * 0.5})`,
+            border: messageCount > 20 ? '2px solid #dc3545' : 
+                   messageCount > 10 ? '2px solid #ffc107' : '2px solid transparent',
+            zIndex: messageCount > 10 ? 2 : 1
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'translateX(-50%) scale(1.5)';
+            e.target.style.zIndex = '10';
+            e.target.style.boxShadow = `0 4px 12px rgba(${baseColor}, ${opacity * 0.7})`;
+            handleDotHover(user, e);
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'translateX(-50%) scale(1)';
+            e.target.style.zIndex = messageCount > 10 ? '2' : '1';
+            e.target.style.boxShadow = `0 2px 8px rgba(${baseColor}, ${opacity * 0.5})`;
+            setTooltip({ visible: false, item: null, position: { x: 0, y: 0 } });
+          }}
+          onMouseMove={(e) => {
+            handleDotHover(user, e);
+          }}
+        />
+      );
+    } catch (err) {
+      console.error('Error rendering engagement dot:', err);
+      return null;
+    }
+  }).filter(Boolean);
+};
 
   const formatNumber = (num) => {
     if (!num || isNaN(num)) return '0';
@@ -484,14 +491,20 @@ const AnalyticsView = ({ botId }) => {
                 <p>Highly Engaged</p>
               </div>
             </div>
-            
+            {/* <div className={styles.statCard}>
+              <div className={styles.statIcon}>⏱️</div>
+              <div className={styles.statInfo}>
+                <h3>{analyticsData.avg_session_duration || '0.0'}</h3>
+                <p>Avg Session (min)</p>
+              </div>
+            </div> */}
           </div>
 
           <div className={styles.chartSection}>
             <div className={styles.sectionHeader}>
               <h3>Today's User Engagement Timeline</h3>
               <p>
-                Each dot represents one user. Hover over dots to see exact trigger times.
+                Each dot represents one user. Hover over dots to see exact access times and interaction details.
               </p>
             </div>
             <div className={styles.engagementChart}>

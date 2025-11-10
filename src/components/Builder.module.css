@@ -3012,7 +3012,7 @@
   height: 200px;
   background: #f8f9fa;
   border-radius: 12px;
-  border: 2px dashed #dee2e6;
+  border: 2px dashed #0080ff;
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
@@ -3041,7 +3041,7 @@
   background: white;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-  border: 2px solid #e9ecef;
+  border: 2px solid #0080ff;
 }
 
 .copySuccess {
@@ -3061,17 +3061,17 @@ p {
 }
 
 .homeView {
-  padding: 40px 32px;
-  max-width: 1400px;
+  padding: 4vw 3vw;
+  max-width: 100vw;
   margin: 0 auto;
-  min-height: calc(100vh - 80px);
+  min-height: calc(100vh - 8vh);
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 .homeView h2 {
   color: #1e293b;
-  margin-bottom: 48px;
-  font-size: 36px;
+  margin-bottom: 4vw;
+  font-size: 2.4vw;
   font-weight: 700;
   text-align: center;
   background: linear-gradient(135deg, #3b82f6, #1e40af);
@@ -3084,99 +3084,30 @@ p {
 .homeView h2::after {
   content: '';
   position: absolute;
-  bottom: -12px;
+  bottom: -1vw;
   left: 50%;
   transform: translateX(-50%);
-  width: 80px;
-  height: 4px;
+  width: 6vw;
+  height: 0.3vw;
   background: linear-gradient(90deg, #3b82f6, #1e40af);
-  border-radius: 2px;
+  border-radius: 0.2vw;
 }
 
 .quickLinks {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(2, 200px);
-  gap: 24px;
-  margin-top: 32px;
-}
-
-.quickLinkCard:nth-child(1) {
-  grid-column: 1 / span 2;
-  grid-row: 1 / span 2;
-  background: linear-gradient(145deg, #3b82f6, #1e40af);
-  color: white;
-  position: relative;
-  overflow: hidden;
-  animation-delay: 0.1s;
-}
-
-.quickLinkCard:nth-child(1)::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 120px;
-  height: 120px;
-  background: linear-gradient(45deg, rgba(255,255,255,0.1), transparent);
-  border-radius: 0 0 0 100%;
-}
-
-.quickLinkCard:nth-child(1) h3 {
-  color: white;
-  font-size: 28px;
-  margin-bottom: 16px;
-  position: relative;
-  z-index: 2;
-}
-
-.quickLinkCard:nth-child(1) p {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 16px;
-  line-height: 1.6;
-  position: relative;
-  z-index: 2;
-}
-
-.quickLinkCard:nth-child(2) {
-  grid-column: 3;
-  grid-row: 1;
-  color: #10b981;
-  border-left: 4px solid #10b981;
-  animation-delay: 0.2s;
-}
-
-.quickLinkCard:nth-child(3) {
-  grid-column: 4;
-  grid-row: 1;
-  color: #f59e0b;
-  border-left: 4px solid #f59e0b;
-  animation-delay: 0.3s;
-}
-
-.quickLinkCard:nth-child(4) {
-  grid-column: 3;
-  grid-row: 2;
-  color: #ef4444;
-  border-left: 4px solid #ef4444;
-  animation-delay: 0.4s;
-}
-
-.quickLinkCard:nth-child(5) {
-  grid-column: 4;
-  grid-row: 2;
-  color: #8b5cf6;
-  border-left: 4px solid #8b5cf6;
-  animation-delay: 0.5s;
+  grid-template-rows: repeat(2, 16vw);
+  gap: 2vw;
+  margin-top: 3vw;
 }
 
 .quickLinkCard {
   background: white;
-  border-radius: 20px;
-  padding: 32px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
-    0 2px 4px -1px rgba(0, 0, 0, 0.03);
-  border: 1px solid #f1f5f9;
+  border-radius: 1.5vw;
+  padding: 2.5vw;
+  box-shadow: 0 0.4vw 0.6vw -0.1vw rgba(0, 0, 0, 0.05),
+    0 0.2vw 0.4vw -0.1vw rgba(0, 0, 0, 0.03);
+  border: 0.1vw solid #f1f5f9;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -3187,33 +3118,11 @@ p {
   animation: cardEntrance 0.6s ease-out forwards;
 }
 
-.quickLinkCard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, currentColor, transparent);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.quickLinkCard:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15),
-    0 12px 24px -8px rgba(0, 0, 0, 0.1);
-  border-color: #e2e8f0;
-}
-
-.quickLinkCard:hover::before {
-  opacity: 1;
-}
 
 .quickLinkCard h3 {
   color: #1e293b;
-  margin-bottom: 12px;
-  font-size: 20px;
+  margin-bottom: 1vw;
+  font-size: 1.2vw;
   font-weight: 600;
   line-height: 1.3;
 }
@@ -3222,85 +3131,46 @@ p {
   color: #64748b;
   margin: 0;
   line-height: 1.5;
-  font-size: 14px;
+  font-size: 0.9vw;
   font-weight: 400;
   flex-grow: 1;
 }
 
 .cardIcon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
+  width: 3.5vw;
+  height: 3.5vw;
+  border-radius: 1vw;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 1.5vw;
   transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.quickLinkCard:hover .cardIcon {
-  transform: scale(1.05);
-}
-
-.quickLinkCard:nth-child(1) .cardIcon {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.quickLinkCard:nth-child(2) .cardIcon {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
-}
-
-.quickLinkCard:nth-child(3) .cardIcon {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: white;
-  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
-}
-
-.quickLinkCard:nth-child(4) .cardIcon {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
-}
-
-.quickLinkCard:nth-child(5) .cardIcon {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-  color: white;
-  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
 }
 
 .cardIcon svg {
-  width: 24px;
-  height: 24px;
+  width: 1.5vw;
+  height: 1.5vw;
+  fill: currentColor;
 }
 
+/* CTA text */
 .cardCta {
-  margin-top: 20px;
+  margin-top: 1.5vw;
   color: currentColor;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 0.9vw;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5vw;
   opacity: 0.8;
   transition: all 0.3s ease;
-  position: relative;
-  z-index: 2;
 }
 
 .quickLinkCard:hover .cardCta {
   opacity: 1;
-  transform: translateX(4px);
-}
-
-.quickLinkCard:nth-child(1) .cardCta {
-  color: white;
-  font-weight: 500;
+  transform: translateX(2.9vw);
+  font-size: 1vw;
+  font-weight: bolder;
 }
 
 .cardCta span {
@@ -3308,34 +3178,122 @@ p {
 }
 
 .quickLinkCard:hover .cardCta span {
-  transform: translateX(4px);
+  transform: translateX(0.3vw);
 }
 
-.quickLinkCard:nth-child(1)::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
-  background-size: 20px 20px;
-  opacity: 0.3;
-  transform: rotate(45deg);
+/* Specific Cards */
+.quickLinkCard:nth-child(1) {
+  grid-column: 1 / span 2;
+  grid-row: 1 / span 2;
+  background: linear-gradient(145deg, #3b82f6, #1e40af);
+  color: white;
+  position: relative;
+  overflow: hidden;
 }
 
-@keyframes cardEntrance{
+.quickLinkCard:nth-child(1) h3,
+.quickLinkCard:nth-child(1) p,
+.quickLinkCard:nth-child(1) .cardCta {
+  color: white;
+}
 
+.quickLinkCard:nth-child(1) .cardIcon {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.15));
+  border: 0.1vw solid rgba(255, 255, 255, 0.3);
+}
+
+.quickLinkCard:nth-child(2) {
+  color: #10b981;
+  border-left: 0.3vw solid #10b981;
+}
+
+.quickLinkCard:nth-child(3) {
+  color: #f59e0b;
+  border-left: 0.3vw solid #f59e0b;
+}
+
+.quickLinkCard:nth-child(4) {
+  color: #ef4444;
+  border-left: 0.3vw solid #ef4444;
+}
+
+.quickLinkCard:nth-child(5) {
+  color: #8b5cf6;
+  border-left: 0.3vw solid #8b5cf6;
+}
+
+/* RESPONSIVE BREAKPOINTS */
+@media (max-width: 1200px) {
+  .quickLinks {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: auto;
+  }
+
+  .quickLinkCard:nth-child(1) {
+    grid-column: 1 / span 2;
+    grid-row: auto;
+  }
+
+  .homeView h2 {
+    font-size: 3.5vw;
+  }
+
+  .cardIcon {
+    width: 5vw;
+    height: 5vw;
+  }
+
+  .cardIcon svg {
+    width: 2.5vw;
+    height: 2.5vw;
+  }
+}
+
+@media (max-width: 768px) {
+  .quickLinks {
+    grid-template-columns: 1fr;
+  }
+
+  .homeView h2 {
+    font-size: 5vw;
+  }
+
+  .quickLinkCard {
+    padding: 4vw;
+  }
+
+  .cardIcon {
+    width: 8vw;
+    height: 8vw;
+  }
+
+  .cardIcon svg {
+    width: 4vw;
+    height: 4vw;
+  }
+
+  .quickLinkCard h3 {
+    font-size: 3.5vw;
+  }
+
+  .quickLinkCard p,
+  .cardCta {
+    font-size: 2.8vw;
+  }
+}
+
+/* Animation */
+@keyframes cardEntrance {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(3vw);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
-
 }
+
 
 .tooltipContainer {
   position: relative;

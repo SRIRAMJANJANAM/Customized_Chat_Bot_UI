@@ -21,9 +21,12 @@ export default function TestModal({ botId, onClose }) {
   const [currentFormNodeId, setCurrentFormNodeId] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [touchedFields, setTouchedFields] = useState({});
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  
   const scrollRef = useRef(null);
+  const inputRef = useRef(null);
 
-  // Validation functions
   const validateFieldValue = (field, value) => {
     if (field.required && (!value || value.toString().trim() === '')) {
       return { isValid: false, message: `${field.label || 'This field'} is required` };
@@ -122,14 +125,54 @@ export default function TestModal({ botId, onClose }) {
     }
   }, [sessionId]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100; // 100px threshold
+      
+      setIsAtBottom(isNearBottom);
+      
+      if (isNearBottom) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        setShowScrollToBottom(false);
+      }
     }
   }, [transcript, running, showForm]);
 
-  // Process backend responses and update UI state
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      
+      setIsAtBottom(isNearBottom);
+      setShowScrollToBottom(!isNearBottom && scrollHeight > clientHeight);
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+      setShowScrollToBottom(false);
+    }
+  };
+
+  useEffect(() => {
+    const scrollElement = scrollRef.current;
+    if (scrollElement) {
+      scrollElement.addEventListener('scroll', handleScroll);
+      return () => scrollElement.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!showForm && !running && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [showForm, running, transcript]);
+
   useEffect(() => {
     if (transcript.length === 0) {
       setFileRequested(false);
@@ -143,8 +186,7 @@ export default function TestModal({ botId, onClose }) {
     }
 
     const lastMessage = transcript[transcript.length - 1];
-    
-    // Check for file requests
+
     const isFileRequest = lastMessage.from === 'bot' && 
       (lastMessage.type === 'file_request' || 
        (lastMessage.text && (
@@ -156,8 +198,7 @@ export default function TestModal({ botId, onClose }) {
        )));
     
     setFileRequested(isFileRequest);
-    
-    // Check for forms
+
     const hasFormFields = lastMessage.form_fields && lastMessage.form_fields.length > 0;
     const isFormNode = lastMessage.node_type === 'google_sheet' || lastMessage.type === 'form';
     const hasFormInContent = lastMessage.content && lastMessage.content.form_fields;
@@ -173,8 +214,7 @@ export default function TestModal({ botId, onClose }) {
         setCurrentFormNodeId(lastMessage.node_id || currentNodeId);
         setFieldErrors({});
         setTouchedFields({});
-        
-        // Initialize form data
+
         const initialFormData = {};
         fields.forEach(field => {
           const fieldKey = field.attributeName || field.attribute_name || field.name;
@@ -183,7 +223,6 @@ export default function TestModal({ botId, onClose }) {
         setFormData(initialFormData);
       }
     } else {
-      // Only hide form if we're not in the middle of a form interaction
       if (!lastMessage.form_fields && !lastMessage.content?.form_fields) {
         setShowForm(false);
         setFieldErrors({});
@@ -192,7 +231,6 @@ export default function TestModal({ botId, onClose }) {
     }
   }, [transcript, currentNodeId, formData]);
 
-  // Reset upload success message
   useEffect(() => {
     if (uploadSuccess) {
       const timer = setTimeout(() => {
@@ -202,7 +240,6 @@ export default function TestModal({ botId, onClose }) {
     }
   }, [uploadSuccess]);
 
-  // Fetch initial greeting
   useEffect(() => {
     const fetchGreeting = async () => {
       if (!sessionId) return;
@@ -227,7 +264,6 @@ export default function TestModal({ botId, onClose }) {
         }
       } catch (error) {
         console.error('Error fetching greeting:', error);
-        // Fallback welcome message
         setTranscript(prev => {
           const exists = prev.some(m => m.from === 'bot' && m.text.includes('Welcome'));
           if (exists) return prev;
@@ -249,7 +285,6 @@ export default function TestModal({ botId, onClose }) {
 
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  // Process a single message
   const processMessage = (msg) => {
     if (!msg || typeof msg !== 'object') return null;
 
@@ -258,13 +293,10 @@ export default function TestModal({ botId, onClose }) {
       id: msg.id || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: msg.timestamp || new Date().toISOString()
     };
-
-    // Add FAQ styling
     if (msg.is_faq) {
       processedMsg.className = 'faq-response';
     }
 
-    // Add fallback response styling for "I'm sorry" messages
     if (msg.text && (
         msg.text.includes("I'm sorry") || 
         msg.text.includes("I didn't understand") ||
@@ -277,7 +309,6 @@ export default function TestModal({ botId, onClose }) {
       processedMsg.className = processedMsg.className ? `${processedMsg.className} fallback-response` : 'fallback-response';
     }
 
-    // Process different message types
     switch (msg.type) {
       case 'image':
         processedMsg.url = msg.image || msg.file || msg.file_content || msg.file_url || 
@@ -314,7 +345,6 @@ export default function TestModal({ botId, onClose }) {
         break;
 
       default:
-        // Handle form messages
         if (msg.node_type === 'google_sheet' || msg.type === 'form' || msg.form_fields) {
           processedMsg.form_fields = msg.form_fields || msg.content?.form_fields || [];
           processedMsg.type = 'form';
@@ -325,7 +355,6 @@ export default function TestModal({ botId, onClose }) {
         break;
     }
 
-    // Ensure text is properly set
     if (!processedMsg.text && processedMsg.content && typeof processedMsg.content === 'string') {
       processedMsg.text = processedMsg.content;
     }
@@ -333,7 +362,6 @@ export default function TestModal({ botId, onClose }) {
     return processedMsg;
   };
 
-  // FIXED: Better duplicate detection that doesn't filter legitimate messages
   const processAndAddMessages = async (messages) => {
     if (!messages || !Array.isArray(messages)) return;
 
@@ -342,15 +370,13 @@ export default function TestModal({ botId, onClose }) {
       if (!processedMsg) continue;
 
       setTranscript(prev => {
-        // Much less aggressive duplicate checking
-        // Only check by exact ID match, or same text from same sender in last 2 messages
         const recentMessages = prev.slice(-2);
         const exists = recentMessages.some(existing => 
           existing.id === processedMsg.id || 
           (
             existing.text === processedMsg.text && 
             existing.from === processedMsg.from &&
-            Date.now() - new Date(existing.timestamp).getTime() < 5000 // Within 5 seconds
+            Date.now() - new Date(existing.timestamp).getTime() < 5000 //5 seconds
           )
         );
         
@@ -367,14 +393,11 @@ export default function TestModal({ botId, onClose }) {
     }
   };
 
-  // Handle option selection
   const handleOptionSelect = async (option) => {
     if (running) return;
     
     setSelectedOption(option);
     setRunning(true);
-    
-    // Add user's selection to transcript
     setTranscript(prev => [...prev, {
       from: 'user',
       type: 'text',
@@ -390,8 +413,6 @@ export default function TestModal({ botId, onClose }) {
         active_path_id: activePathId,
         session_id: sessionId
       });
-
-      // Handle different response formats
       if (data?.message?.transcript) {
         await processAndAddMessages(data.message.transcript);
         setCurrentNodeId(data.message.current_node_id ?? null);
@@ -401,7 +422,6 @@ export default function TestModal({ botId, onClose }) {
         setCurrentNodeId(data.current_node_id ?? null);
         setActivePathId(data.active_path_id ?? null);
       } else if (data?.message) {
-        // Handle single message response
         await processAndAddMessages([data.message]);
         setCurrentNodeId(data.message.current_node_id ?? null);
         setActivePathId(data.active_path_id ?? null);
@@ -425,28 +445,18 @@ export default function TestModal({ botId, onClose }) {
     }
   };
 
-  // Handle form input changes - Only mark as touched, don't validate or clear errors
   const handleFormInputChange = (fieldName, value, field) => {
     setFormData(prev => ({
       ...prev,
       [fieldName]: value
     }));
-
-    // Mark field as touched
     setTouchedFields(prev => ({
       ...prev,
       [fieldName]: true
     }));
-
-    // DON'T validate or clear errors on change - only on blur
-    // This prevents errors from disappearing while user is typing
   };
-
-  // Validate field on blur - errors persist until field becomes valid
   const handleFieldBlur = (field) => {
     const fieldKey = field.attributeName || field.attribute_name || field.name;
-    
-    // Mark field as touched
     setTouchedFields(prev => ({
       ...prev,
       [fieldKey]: true
@@ -461,7 +471,6 @@ export default function TestModal({ botId, onClose }) {
         [fieldKey]: validation.message
       }));
     } else {
-      // Only clear error when validation passes
       setFieldErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[fieldKey];
@@ -469,13 +478,9 @@ export default function TestModal({ botId, onClose }) {
       });
     }
   };
-
-  // Enhanced form submission handler with validation
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (running) return;
-
-    // Mark all fields as touched to show all errors
     const allTouched = {};
     const errors = {};
     let hasErrors = false;
@@ -483,8 +488,6 @@ export default function TestModal({ botId, onClose }) {
     formFields.forEach(field => {
       const fieldKey = field.attributeName || field.attribute_name || field.name;
       allTouched[fieldKey] = true;
-      
-      // Validate each field
       const value = formData[fieldKey];
       const validation = validateFieldValue(field, value);
       
@@ -498,14 +501,11 @@ export default function TestModal({ botId, onClose }) {
     setFieldErrors(errors);
 
     if (hasErrors) {
-      // Scroll to first error
       const firstErrorField = Object.keys(errors)[0];
       const errorElement = document.querySelector(`[data-field="${firstErrorField}"]`);
       if (errorElement) {
         errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-      
-      // Show alert with error count
       const errorCount = Object.keys(errors).length;
       alert(`Please fix ${errorCount} error${errorCount > 1 ? 's' : ''} before submitting the form.`);
       return;
@@ -525,8 +525,6 @@ export default function TestModal({ botId, onClose }) {
       };
 
       const { data } = await API.post(`/chatbots/${botId}/run/`, payload);
-      
-      // Process placeholders in response
       const processPlaceholders = (messages) => {
         return messages.map(msg => {
           if (msg.text && typeof msg.text === 'string') {
@@ -555,8 +553,6 @@ export default function TestModal({ botId, onClose }) {
         setCurrentNodeId(data.current_node_id ?? null);
         setActivePathId(data.active_path_id ?? null);
       }
-      
-      // Reset form
       setShowForm(false);
       setFormFields([]);
       setFormData({});
@@ -577,14 +573,10 @@ export default function TestModal({ botId, onClose }) {
       setRunning(false);
     }
   };
-
-  // Send message to backend
   const sendMessage = async () => {
     if (running || (!message.trim() && !file)) return;
     
     setRunning(true);
-
-    // Add user message to transcript
     if (message.trim()) {
       setTranscript(prev => [...prev, {
         from: 'user',
@@ -594,8 +586,6 @@ export default function TestModal({ botId, onClose }) {
         id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
       }]);
     }
-
-    // Add file to transcript if present
     if (file) {
       setTranscript(prev => [...prev, file.type.startsWith('image/') ? {
         from: 'user',
@@ -638,7 +628,6 @@ export default function TestModal({ botId, onClose }) {
 
       const { data } = response;
 
-      // Handle different response formats
       if (data?.message?.transcript) {
         await processAndAddMessages(data.message.transcript);
         setCurrentNodeId(data.message.current_node_id ?? null);
@@ -672,7 +661,6 @@ export default function TestModal({ botId, onClose }) {
     }
   };
 
-  // Handle Enter key press
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -680,7 +668,6 @@ export default function TestModal({ botId, onClose }) {
     }
   };
 
-  // Clear file attachment
   const clearAttachment = () => {
     setFile(null);
     if (filePreviewUrl) {
@@ -689,7 +676,6 @@ export default function TestModal({ botId, onClose }) {
     setFilePreviewUrl(null);
   };
 
-  // Handle file selection
   const onPickFile = (e) => {
     if (!fileRequested || running) return;
     
@@ -704,7 +690,6 @@ export default function TestModal({ botId, onClose }) {
     }
   };
 
-  // Format timestamp
   const formatTimestamp = (isoString) => {
     try {
       const date = new Date(isoString);
@@ -714,14 +699,12 @@ export default function TestModal({ botId, onClose }) {
     }
   };
 
-  // Check if showing options
   const isShowingOptions = () => {
     if (transcript.length === 0) return false;
     const lastMessage = transcript[transcript.length - 1];
     return lastMessage.from === 'bot' && lastMessage.type === 'message_with_options' && lastMessage.options?.length > 0;
   };
 
-  // Render options based on display style
   const renderOptions = (message) => {
     if (!message.options || message.options.length === 0) {
       return null;
@@ -780,7 +763,6 @@ export default function TestModal({ botId, onClose }) {
     }
   };
 
-  // Render form field based on type
   const renderFormField = (field) => {
     const fieldKey = field.attributeName || field.attribute_name || field.name;
     const error = fieldErrors[fieldKey];
@@ -891,7 +873,7 @@ export default function TestModal({ botId, onClose }) {
             {/* <button className="close-button" onClick={onClose}>×</button> */}
           </div>
 
-          <div className="chat-body" ref={scrollRef}>
+          <div className="chat-body" ref={scrollRef} onScroll={handleScroll}>
             {transcript
               .filter((m) => m.type !== 'path_trigger')
               .map((m) => (
@@ -937,6 +919,16 @@ export default function TestModal({ botId, onClose }) {
                   {m.from === 'user' && <div className="message-avatar">👤</div>}
                 </div>
               ))}
+            
+            {/* Scroll to bottom indicator */}
+            {showScrollToBottom && (
+              <div className="scroll-to-bottom-indicator" onClick={scrollToBottom}>
+                <div className="scroll-indicator-content">
+                  <span className="scroll-indicator-text">New messages</span>
+                  <span className="scroll-indicator-arrow">↓</span>
+                </div>
+              </div>
+            )}
               
             {running && (
               <div className="message bot-message">
@@ -989,7 +981,7 @@ export default function TestModal({ botId, onClose }) {
             </div>
           )}
 
-          {/* Upload Success Toast */}
+          {/* Upload Success notfi */}
           {uploadSuccess && (
             <div className="upload-success-toast">
               <div className="toast-content">
@@ -999,7 +991,7 @@ export default function TestModal({ botId, onClose }) {
             </div>
           )}
 
-          {/* File Request Banner */}
+          {/* File Request */}
           {fileRequested && (
             <div className="file-request-banner">
               <div className="banner-content">
@@ -1024,6 +1016,7 @@ export default function TestModal({ botId, onClose }) {
             <div className={`chat-input-container ${fileRequested ? 'file-requested' : ''}`}>
               <div className="input-wrapper">
                 <input 
+                  ref={inputRef}
                   type="text" 
                   value={message} 
                   onChange={(e) => setMessage(e.target.value)} 
@@ -1031,6 +1024,7 @@ export default function TestModal({ botId, onClose }) {
                   placeholder={fileRequested ? "You can also add a message with your file..." : "Type a message..."} 
                   disabled={running} 
                   className="message-input"
+                  autoFocus
                 />
                 <label className={`attach-button ${fileRequested ? 'enabled' : 'disabled'}`}>
                   <input 
