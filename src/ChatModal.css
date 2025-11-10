@@ -437,7 +437,7 @@
 /* Enhanced Responsive Design */
 @media (max-width: 1200px) {
   .chat-modal {
-    max-width: 95vw;
+    max-width: 100%;
     max-height: 95vh;
   }
 }
@@ -881,17 +881,7 @@
   }
 }
 
-/* High-resolution devices */
-@media (min-width: 1400px) {
-  .chat-modal {
-    max-width: 1200px;
-    max-height: 800px;
-  }
-  
-  .message {
-    max-width: 70%;
-  }
-}
+
 
 /* Touch device optimizations */
 @media (hover: none) and (pointer: coarse) {
