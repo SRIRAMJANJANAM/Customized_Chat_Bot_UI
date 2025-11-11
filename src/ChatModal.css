@@ -969,7 +969,8 @@
 }
 
 .attach-button.enabled:hover {
-  background-color: #e0e0e0;
+  background-color: #000000;
+  color: black;
 }
 
 .chat-input-container.file-requested {

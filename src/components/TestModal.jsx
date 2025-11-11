@@ -376,7 +376,7 @@ export default function TestModal({ botId, onClose }) {
           (
             existing.text === processedMsg.text && 
             existing.from === processedMsg.from &&
-            Date.now() - new Date(existing.timestamp).getTime() < 5000 //5 seconds
+            Date.now() - new Date(existing.timestamp).getTime() < 1000 //5 seconds
           )
         );
         
@@ -562,13 +562,6 @@ export default function TestModal({ botId, onClose }) {
 
     } catch (error) {
       console.error('Error submitting form:', error);
-      setTranscript(prev => [...prev, {
-        from: 'bot',
-        type: 'text',
-        text: 'Error occurred while processing your form. Please try again.',
-        timestamp: new Date().toISOString(),
-        id: `form-error-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
-      }]);
     } finally {
       setRunning(false);
     }

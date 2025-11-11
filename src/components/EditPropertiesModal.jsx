@@ -26,7 +26,10 @@ const EditPropertiesModal = ({
     testResults: false
   });
 
-  if (!selected) return null;
+  // NEW STATES FOR ATTRIBUTE MAPPING
+  const [apiResponseAttributes, setApiResponseAttributes] = useState({});
+  const [attributeModalOpen, setAttributeModalOpen] = useState(false);
+  const [selectedField, setSelectedField] = useState(null);
 
   // Toggle section expansion
   const toggleSection = (section) => {
@@ -46,10 +49,46 @@ const EditPropertiesModal = ({
     try {
       setTestingEmail(true);
       
-      const botId = activePath?.chatbot || 'current';
+      // Get the actual chatbot ID from activePath
+      let botId = null;
+      
+      // Try different ways to get the chatbot ID
+      if (activePath?.chatbot && typeof activePath.chatbot === 'number') {
+        botId = activePath.chatbot;
+      } else if (activePath?.chatbot?.id) {
+        botId = activePath.chatbot.id;
+      } else if (activePath?.id) {
+        // If we have path ID but not chatbot ID, we might need to fetch it
+        // For now, show an error
+        alert('Unable to determine chatbot ID. Please save the chatbot first.');
+        setTestingEmail(false);
+        return;
+      }
+      
+      if (!botId) {
+        alert('Chatbot ID not found. Please save the chatbot configuration first.');
+        setTestingEmail(false);
+        return;
+      }
+
+      // Extract numeric ID from node ID (e.g., 'node-499' -> 499)
+      let nodeId = selected.id;
+      if (typeof nodeId === 'string' && nodeId.includes('-')) {
+        const parts = nodeId.split('-');
+        nodeId = parts[parts.length - 1]; // Get the last part
+      }
+      
+      // Convert to number
+      nodeId = parseInt(nodeId, 10);
+      
+      if (isNaN(nodeId)) {
+        alert('Invalid node ID format');
+        setTestingEmail(false);
+        return;
+      }
       
       const response = await API.post(`/chatbots/${botId}/send_test_email/`, {
-        node_id: selected.id,
+        node_id: nodeId,  // Send numeric ID
         test_recipient: selected.data.emailRecipients.split(',')[0].trim()
       });
 
@@ -180,6 +219,178 @@ const EditPropertiesModal = ({
     } finally {
       setTestingApi(false);
     }
+  };
+
+  // NEW FUNCTIONS FOR ATTRIBUTE MAPPING
+
+  // Handle field click to create attribute
+  const handleResponseFieldClick = (fieldPath, fieldValue) => {
+    setSelectedField({
+      path: fieldPath,
+      value: fieldValue,
+      currentAttribute: apiResponseAttributes[fieldPath]
+    });
+    setAttributeModalOpen(true);
+  };
+
+  // Save attribute mapping
+  const saveAttributeMapping = (fieldPath, attributeName) => {
+    setApiResponseAttributes(prev => ({
+      ...prev,
+      [fieldPath]: attributeName
+    }));
+    
+    // Also update the response mapping in the node data
+    const currentMapping = typeof selected.data.apiResponseMapping === 'string' 
+      ? selected.data.apiResponseMapping 
+      : JSON.stringify(selected.data.apiResponseMapping || {});
+    
+    let parsedMapping = {};
+    try {
+      parsedMapping = JSON.parse(currentMapping);
+    } catch (e) {
+      parsedMapping = {};
+    }
+    
+    parsedMapping[attributeName] = fieldPath;
+    
+    updateSelected('apiResponseMapping', JSON.stringify(parsedMapping, null, 2));
+    setAttributeModalOpen(false);
+  };
+
+  // Component to render clickable response fields
+  const RenderResponseField = ({ fieldPath, fieldValue, depth = 0 }) => {
+    const attributeName = apiResponseAttributes[fieldPath];
+    
+    if (typeof fieldValue === 'object' && fieldValue !== null) {
+      return (
+        <div style={{ marginLeft: depth * 20, borderLeft: '1px solid #ddd', paddingLeft: '10px' }}>
+          <div className={styles.fieldName} style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+            {fieldPath.split('.').pop()}:
+          </div>
+          {Object.entries(fieldValue).map(([key, value]) => (
+            <RenderResponseField
+              key={`${fieldPath}.${key}`}
+              fieldPath={`${fieldPath}.${key}`}
+              fieldValue={value}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      );
+    }
+    
+    return (
+      <div 
+        className={`${styles.responseField} ${attributeName ? styles.mappedField : ''}`}
+        onClick={() => handleResponseFieldClick(fieldPath, fieldValue)}
+        style={{
+          padding: '8px',
+          margin: '5px 0',
+          border: '1px solid #ddd',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          backgroundColor: attributeName ? '#e8f5e8' : '#f8f9fa',
+          transition: 'all 0.2s'
+        }}
+        title={attributeName ? `Mapped to: {{${attributeName}}}` : 'Click to map this field to an attribute'}
+      >
+        <span style={{ fontWeight: 'bold', color: '#333' }}>{fieldPath.split('.').pop()}:</span>
+        <span style={{ marginLeft: '8px', color: '#666' }}>{String(fieldValue)}</span>
+        {attributeName && (
+          <span 
+            style={{
+              marginLeft: '10px',
+              padding: '2px 6px',
+              backgroundColor: '#28a745',
+              color: 'white',
+              borderRadius: '12px',
+              fontSize: '12px'
+            }}
+          >
+            {`{{${attributeName}}}`}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  // Attribute Mapping Modal
+  const AttributeMappingModal = () => {
+    const [attributeName, setAttributeName] = useState(selectedField?.currentAttribute || '');
+    
+    const handleSave = () => {
+      if (attributeName.trim()) {
+        saveAttributeMapping(selectedField.path, attributeName.trim());
+      }
+    };
+    
+    const handleRemove = () => {
+      setApiResponseAttributes(prev => {
+        const newAttrs = { ...prev };
+        delete newAttrs[selectedField.path];
+        return newAttrs;
+      });
+      setAttributeModalOpen(false);
+    };
+
+    return (
+      <div className={styles.overlay} onClick={() => setAttributeModalOpen(false)}>
+        <div className={styles.modal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+          <div className={styles.modalHeader}>
+            <h3 className={styles.modalTitle}>Map API Field to Attribute</h3>
+            <button onClick={() => setAttributeModalOpen(false)} className={styles.closeButton}>✕</button>
+          </div>
+          <div className={styles.modalContent}>
+            <div style={{ marginBottom: '15px' }}>
+              <strong>Field:</strong> {selectedField?.path}
+            </div>
+            <div style={{ marginBottom: '15px' }}>
+              <strong>Value:</strong> {String(selectedField?.value)}
+            </div>
+            
+            <label className={styles.label}>Attribute Name</label>
+            <input
+              type="text"
+              value={attributeName}
+              onChange={(e) => setAttributeName(e.target.value)}
+              className={styles.input}
+              placeholder="Enter attribute name (e.g., user_name)"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave();
+              }}
+            />
+            <div className={styles.helpText}>
+              This attribute will be available as <code>{`{{${attributeName || 'attribute_name'}}}`}</code> in other nodes
+            </div>
+            
+            <div className={styles.actionButtons} style={{ marginTop: '20px' }}>
+              <button 
+                onClick={handleSave} 
+                disabled={!attributeName.trim()}
+                className={`${styles.actionButton} ${styles.saveBtn}`}
+              >
+                Save Mapping
+              </button>
+              {selectedField?.currentAttribute && (
+                <button 
+                  onClick={handleRemove}
+                  className={`${styles.actionButton} ${styles.deleteBtn}`}
+                >
+                  Remove Mapping
+                </button>
+              )}
+              <button 
+                onClick={() => setAttributeModalOpen(false)} 
+                className={`${styles.actionButton} ${styles.cancelBtn}`}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Common header templates
@@ -1449,19 +1660,38 @@ const EditPropertiesModal = ({
                         {apiTestResult.success ? (
                           <div className={styles.resultDetails}>
                             <div><strong>Status Code:</strong> {apiTestResult.status}</div>
-                            {apiTestResult.extracted && Object.keys(apiTestResult.extracted).length > 0 && (
-                              <div>
-                                <strong>Extracted Data:</strong>
-                                <pre className={styles.resultPre}>
-                                  {JSON.stringify(apiTestResult.extracted, null, 2)}
-                                </pre>
-                              </div>
-                            )}
+                            
+                            {/* Clickable Response Fields */}
                             {apiTestResult.data && (
                               <div>
-                                <strong>Full Response:</strong>
+                                <strong>API Response (Click fields to map):</strong>
+                                <div style={{ 
+                                  marginTop: '10px', 
+                                  maxHeight: '300px', 
+                                  overflow: 'auto',
+                                  padding: '10px',
+                                  border: '1px solid #ddd',
+                                  borderRadius: '4px',
+                                  backgroundColor: '#fafafa'
+                                }}>
+                                  <RenderResponseField
+                                    fieldPath="response"
+                                    fieldValue={apiTestResult.data}
+                                    depth={0}
+                                  />
+                                </div>
+                                <div className={styles.helpText} style={{ marginTop: '10px' }}>
+                                  💡 Click on any field to map it to an attribute. Use <code>{`{{attribute_name}}`}</code> in other nodes to display the data.
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Show extracted data if any */}
+                            {apiTestResult.extracted && Object.keys(apiTestResult.extracted).length > 0 && (
+                              <div style={{ marginTop: '15px' }}>
+                                <strong>Currently Mapped Data:</strong>
                                 <pre className={styles.resultPre}>
-                                  {JSON.stringify(apiTestResult.data, null, 2)}
+                                  {JSON.stringify(apiTestResult.extracted, null, 2)}
                                 </pre>
                               </div>
                             )}
@@ -1493,6 +1723,9 @@ const EditPropertiesModal = ({
           </div>
         </section>
       </div>
+
+      {/* Attribute Mapping Modal */}
+      {attributeModalOpen && <AttributeMappingModal />}
     </div>
   );
 };

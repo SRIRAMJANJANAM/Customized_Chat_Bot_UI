@@ -5151,3 +5151,113 @@ p {
 .resultPre::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+
+
+.responseField {
+  padding: 8px;
+  margin: 5px 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #f8f9fa;
+  transition: all 0.2s;
+}
+
+.responseField:hover {
+  background-color: #e9ecef;
+  border-color: #007bff;
+}
+
+.mappedField {
+  background-color: #e8f5e8;
+  border-color: #28a745;
+}
+
+.fieldName {
+  font-weight: bold;
+  color: #333;
+}
+
+.fieldValue {
+  margin-left: 8px;
+  color: #666;
+}
+
+.attributeBadge {
+  margin-left: 10px;
+  padding: 2px 6px;
+  background-color: #28a745;
+  color: white;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+
+/* Attribute Suggestions Styles */
+.attributeSuggestions {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  min-width: 200px;
+  font-size: 14px;
+}
+
+.suggestionsHeader {
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c757d;
+}
+
+.suggestionItem {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f8f9fa;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background-color 0.2s;
+}
+
+.suggestionItem:hover,
+.suggestionItem.active {
+  background: #007bff;
+  color: white;
+}
+
+.suggestionPrefix,
+.suggestionSuffix {
+  font-weight: bold;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.suggestionItem:hover .suggestionPrefix,
+.suggestionItem:hover .suggestionSuffix,
+.suggestionItem.active .suggestionPrefix,
+.suggestionItem.active .suggestionSuffix {
+  opacity: 1;
+  color: white;
+}
+
+/* Help text for attribute autocomplete */
+.helpText code {
+  background: #e9ecef;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+}
+
+/* Enhanced input and textarea styles for better UX */
+.input:focus,
+.textarea:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  outline: none;
+}

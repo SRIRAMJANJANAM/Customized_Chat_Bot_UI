@@ -3,9 +3,52 @@ import { API } from '../api';
 import styles from './Builder.module.css';
 
 const formatMessageText = (text) => {
-  if (!text) return '';
+  // Enhanced type checking and validation
+  if (text === null || text === undefined) {
+    return '';
+  }
   
-  let formattedText = text
+  // Convert to string if it's not already
+  let textToFormat;
+  if (typeof text === 'string') {
+    textToFormat = text;
+  } else if (typeof text === 'number' || typeof text === 'boolean') {
+    textToFormat = String(text);
+  } else if (Array.isArray(text)) {
+    textToFormat = text.join(' ');
+  } else if (typeof text === 'object') {
+    // Try to extract meaningful text from objects
+    if (text.text && typeof text.text === 'string') {
+      textToFormat = text.text;
+    } else if (text.message && typeof text.message === 'string') {
+      textToFormat = text.message;
+    } else if (text.content && typeof text.content === 'string') {
+      textToFormat = text.content;
+    } else {
+      // Fallback: stringify the object but limit length
+      try {
+        textToFormat = JSON.stringify(text).substring(0, 200);
+      } catch (e) {
+        textToFormat = 'Invalid message content';
+      }
+    }
+  } else {
+    textToFormat = 'Invalid message content';
+  }
+
+  // Ensure we have a string to work with
+  if (!textToFormat || typeof textToFormat !== 'string') {
+    return '';
+  }
+
+  console.log('🔤 Formatting text:', { 
+    original: text, 
+    formattedType: typeof textToFormat,
+    length: textToFormat.length,
+    preview: textToFormat.substring(0, 50) + '...'
+  });
+
+  let formattedText = textToFormat
     .replace(/^# (.*$)/gim, '<h1>$1</h1>')
     .replace(/^## (.*$)/gim, '<h2>$1</h2>')
     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
@@ -43,19 +86,22 @@ const formatMessageText = (text) => {
 const extractOptionsFromText = (text) => {
   if (!text) return null;
   
+  // Ensure text is a string
+  const textToParse = typeof text === 'string' ? text : String(text);
+  
   const options = [];
   
-  const optionsMatch = text.match(/Options:\s*((?:\w+(?:\s+\w+)*\s*)+)/i);
+  const optionsMatch = textToParse.match(/Options:\s*((?:\w+(?:\s+\w+)*\s*)+)/i);
   if (optionsMatch && optionsMatch[1]) {
     options.push(...optionsMatch[1].trim().split(/\s*,\s*|\s+/).filter(opt => opt.trim()));
   }
   
-  const bulletOptions = text.match(/[•\-\*]\s*([^\n]+)/gi);
+  const bulletOptions = textToParse.match(/[•\-\*]\s*([^\n]+)/gi);
   if (bulletOptions) {
     options.push(...bulletOptions.map(opt => opt.replace(/[•\-\*]\s*/i, '').trim()));
   }
   
-  const numberedOptions = text.match(/\d+\.\s*([^\n]+)/gi);
+  const numberedOptions = textToParse.match(/\d+\.\s*([^\n]+)/gi);
   if (numberedOptions) {
     options.push(...numberedOptions.map(opt => opt.replace(/\d+\.\s*/i, '').trim()));
   }
@@ -64,17 +110,21 @@ const extractOptionsFromText = (text) => {
 };
 
 const FormattedMessage = ({ message }) => {
-  const messageText = message?.text || '';
-  const messageType = message?.type || 'text';
-  const messageUrl = message?.url || '';
-  const messageOptions = message?.options || [];
-  const pathTriggered = message?.path_triggered || '';
-  const timestamp = message?.timestamp || '';
-  const isFAQ = message?.is_faq || false;
-  const matchedQuestion = message?.matched_question || '';
-  const formFields = message?.form_fields || [];
-  const fileContent = message?.file_content || '';
+  // Enhanced message validation with fallbacks
+  const safeMessage = message || {};
   
+  const messageText = safeMessage.text;
+  const messageType = safeMessage.type || 'text';
+  const messageUrl = safeMessage.url || '';
+  const messageOptions = safeMessage.options || [];
+  const pathTriggered = safeMessage.path_triggered || '';
+  const timestamp = safeMessage.timestamp || '';
+  const isFAQ = safeMessage.is_faq || false;
+  const matchedQuestion = safeMessage.matched_question || '';
+  const formFields = safeMessage.form_fields || [];
+  const fileContent = safeMessage.file_content || '';
+  
+  // Safe formatting with validation
   const formattedText = formatMessageText(messageText);
   const extractedOptions = extractOptionsFromText(messageText);
   const hasOptions = (messageOptions && messageOptions.length > 0) || 
@@ -85,7 +135,7 @@ const FormattedMessage = ({ message }) => {
 
   // Enhanced image URL handling
   const getImageUrl = (url) => {
-    if (!url) return '';
+    if (!url || typeof url !== 'string') return '';
     
     console.log('🔍 Original image URL:', url);
     
@@ -116,7 +166,7 @@ const FormattedMessage = ({ message }) => {
 
   // Check if file_content is a valid base64 image (should be long enough and contain data:image/)
   const isValidBase64Image = (content) => {
-    if (!content) return false;
+    if (!content || typeof content !== 'string') return false;
     
     // Check if it's a proper base64 image (starts with data:image/ and is reasonably long)
     const isProperBase64 = content.startsWith('data:image/') && content.length > 100;
@@ -145,7 +195,7 @@ const FormattedMessage = ({ message }) => {
     }
     
     // Second priority: URL
-    if (messageUrl) {
+    if (messageUrl && typeof messageUrl === 'string') {
       const url = getImageUrl(messageUrl);
       console.log('🔍 Using URL:', url);
       return url;
@@ -156,6 +206,17 @@ const FormattedMessage = ({ message }) => {
 
   const imageSource = getImageSource();
   const hasValidImageSource = !!imageSource;
+
+  // Debug logging for problematic messages
+  useEffect(() => {
+    if (messageText && typeof messageText !== 'string') {
+      console.warn('⚠️ Non-string message text detected:', {
+        type: typeof messageText,
+        value: messageText,
+        message: safeMessage
+      });
+    }
+  }, [messageText, safeMessage]);
 
   return (
     <div className={`${styles.messageContent} ${isFAQ ? styles.faqMessage : ''}`}>
@@ -216,7 +277,7 @@ const FormattedMessage = ({ message }) => {
       )}
       
       {/* Handle text messages that might have separate image URLs */}
-      {messageType === 'text' && messageUrl && !fileContent && (
+      {messageType === 'text' && messageUrl && typeof messageUrl === 'string' && !fileContent && (
         <div className={styles.imageContainer}>
           <img 
             src={getImageUrl(messageUrl)} 
@@ -288,6 +349,20 @@ const FormattedMessage = ({ message }) => {
       {timestamp && (
         <div className={styles.messageMeta}>
           {new Date(timestamp).toLocaleTimeString()}
+        </div>
+      )}
+      
+      {/* Debug info for problematic messages */}
+      {messageText && typeof messageText !== 'string' && (
+        <div className={styles.debugInfo} style={{ 
+          background: '#fff3cd', 
+          border: '1px solid #ffeaa7', 
+          padding: '8px', 
+          margin: '5px 0',
+          fontSize: '12px',
+          borderRadius: '4px'
+        }}>
+          <strong>Debug:</strong> Message text is {typeof messageText} instead of string. Value: {JSON.stringify(messageText)}
         </div>
       )}
     </div>
@@ -435,11 +510,16 @@ const ChatHistoryView = ({ botId }) => {
   };
 
   const fetchChatHistory = async (sessionId) => {
+    if (!sessionId) {
+      console.error('No session ID provided');
+      setChatError('No session ID provided');
+      return;
+    }
+
     setChatError(null);
     setLoadingChatHistory(true);
     try {
       console.log('Fetching chat history for session:', sessionId);
-      setSelectedChatHistory(null);
       
       const { data } = await API.get(`/chatbots/${botId}/chat_history/?session_id=${sessionId}`);
       console.log('🔍 RAW CHAT HISTORY DATA:', data);
@@ -448,37 +528,51 @@ const ChatHistoryView = ({ botId }) => {
         throw new Error('No data received from server');
       }
       
-      // Log message details for debugging
-      if (data.messages && Array.isArray(data.messages)) {
-        console.log('📝 ALL MESSAGES:', data.messages);
-        
-        data.messages.forEach((msg, index) => {
-          console.log(`Message ${index}:`, {
-            from: msg.from,
-            type: msg.type,
-            text: msg.text,
-            textLength: msg.text?.length,
-            hasText: !!msg.text,
-            is_faq: msg.is_faq,
-            url: msg.url,
-            file_content: msg.file_content ? `Yes (${msg.file_content.length} chars)` : 'No',
-            file_content_preview: msg.file_content ? msg.file_content.substring(0, 50) + '...' : 'None'
-          });
-        });
-      }
-      
+      // Validate and sanitize the data with enhanced message validation
       const validatedData = {
         ...data,
-        messages: Array.isArray(data.messages) ? data.messages : [],
+        messages: Array.isArray(data.messages) ? data.messages.map((msg, index) => ({
+          ...msg,
+          // Ensure text is always a string
+          text: (() => {
+            const text = msg.text;
+            if (text === null || text === undefined) return '';
+            if (typeof text === 'string') return text;
+            if (typeof text === 'number' || typeof text === 'boolean') return String(text);
+            if (Array.isArray(text)) return text.join(' ');
+            if (typeof text === 'object') {
+              try {
+                return JSON.stringify(text).substring(0, 200);
+              } catch (e) {
+                return 'Invalid message content';
+              }
+            }
+            return String(text);
+          })(),
+          type: msg.type || 'text',
+          from: msg.from || 'unknown',
+          is_faq: Boolean(msg.is_faq),
+          url: msg.url || '',
+          file_content: msg.file_content || '',
+          form_fields: Array.isArray(msg.form_fields) ? msg.form_fields : [],
+          options: Array.isArray(msg.options) ? msg.options : [],
+          path_triggered: msg.path_triggered || '',
+          timestamp: msg.timestamp || '',
+          matched_question: msg.matched_question || ''
+        })) : [],
         user_identifier: data.user_identifier || 'Unknown User',
         started_at: data.started_at || new Date().toISOString(),
-        last_activity: data.last_activity || new Date().toISOString()
+        last_activity: data.last_activity || new Date().toISOString(),
+        session_id: data.session_id || sessionId
       };
       
+      console.log('✅ Validated chat history data:', validatedData);
       setSelectedChatHistory(validatedData);
+      
     } catch (err) {
-      console.error('Error fetching chat history:', err);
-      setChatError(`Failed to load chat history: ${err.message}`);
+      console.error('❌ Error fetching chat history:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Unknown error occurred';
+      setChatError(`Failed to load chat history: ${errorMessage}`);
       setSelectedChatHistory(null);
     } finally {
       setLoadingChatHistory(false);
@@ -536,6 +630,17 @@ const ChatHistoryView = ({ botId }) => {
   useEffect(() => {
     fetchChatHistories(1);
   }, [botId]);
+
+  // Add error boundary effect
+  useEffect(() => {
+    const handleError = (error) => {
+      console.error('React Error Boundary caught:', error);
+      setChatError('A rendering error occurred. Please check the console for details.');
+    };
+
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
 
   return (
     <div className={styles.chatHistoryView}>
@@ -620,11 +725,9 @@ const ChatHistoryView = ({ botId }) => {
                       <div className={styles.messageHeader}>
                         <div className={styles.messageSender}>
                           {message.from === 'user' ? '👤 User' : '🤖 Bot'}
-
                         </div>
                       </div>
                       <FormattedMessage message={message} />
-
                     </div>
                   ))
                 ) : (
@@ -659,60 +762,67 @@ const ChatHistoryView = ({ botId }) => {
             ) : (
               <>
                 <div className={styles.historyItems}>
-  {chatHistories.map(history => {
-    // Safe message extraction
-    const lastMessage = history.messages && history.messages.length > 0 ? 
-      history.messages[history.messages.length - 1]?.text : 
-      null;
+                  {chatHistories.map(history => {
+                    // Safe message extraction
+                    const lastMessage = history.messages && history.messages.length > 0 ? 
+                      history.messages[history.messages.length - 1]?.text : 
+                      null;
 
-    // Safe string formatting
-    const formatMessage = (msg) => {
-      if (!msg) return 'No message text';
-      const msgString = String(msg);
-      const cleanMsg = msgString.replace(/<[^>]*>/g, '');
-      return cleanMsg.length > 80 ? cleanMsg.substring(0, 80) + '...' : cleanMsg;
-    };
+                    // Safe string formatting
+                    const formatMessage = (msg) => {
+                      if (!msg) return 'No message text';
+                      const msgString = String(msg);
+                      const cleanMsg = msgString.replace(/<[^>]*>/g, '');
+                      return cleanMsg.length > 80 ? cleanMsg.substring(0, 80) + '...' : cleanMsg;
+                    };
 
-    const formattedLastMessage = formatMessage(lastMessage);
-    
-    // Count FAQ responses in this history
-    const faqCount = history.messages?.filter(msg => msg.is_faq).length || 0;
-    
-    return (
-      <div 
-        key={history.id}
-        className={styles.historyItem}
-        onClick={() => fetchChatHistory(history.session_id)}
-      >
-        <div className={styles.itemHeader}>
-          <strong className={styles.userName}>
-            {formatUserIdentifier(history.user_identifier)}
-          </strong>
-          <span className={styles.messageCount}>
-            {history.messages?.length || 0} message{(history.messages?.length || 0) !== 1 ? 's' : ''}
-            {faqCount > 0 && ` • ${faqCount} FAQ`}
-          </span>
-        </div>
-        <div className={styles.itemPreview}>
-          <span className={styles.lastMessage}>
-            {formattedLastMessage}
-          </span>
-        </div>
-        <div className={styles.itemFooter}>
-          <span className={styles.chatTime}>
-            {new Date(history.last_activity).toLocaleDateString()} at {' '}
-            {new Date(history.last_activity).toLocaleTimeString([], { 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            })}
-          </span>
-        </div>
-      </div>
-    );
-  })}
-</div>
+                    const formattedLastMessage = formatMessage(lastMessage);
+                    
+                    // Count FAQ responses in this history
+                    const faqCount = history.messages?.filter(msg => msg.is_faq).length || 0;
+                    
+                    return (
+                      <div 
+                        key={history.id || history.session_id}
+                        className={styles.historyItem}
+                        onClick={() => {
+                          console.log('Clicked history item:', history);
+                          if (history.session_id) {
+                            fetchChatHistory(history.session_id);
+                          } else {
+                            setChatError('No session ID found for this conversation');
+                          }
+                        }}
+                      >
+                        <div className={styles.itemHeader}>
+                          <strong className={styles.userName}>
+                            {formatUserIdentifier(history.user_identifier)}
+                          </strong>
+                          <span className={styles.messageCount}>
+                            {history.messages?.length || 0} message{(history.messages?.length || 0) !== 1 ? 's' : ''}
+                            {faqCount > 0 && ` • ${faqCount} FAQ`}
+                          </span>
+                        </div>
+                        <div className={styles.itemPreview}>
+                          <span className={styles.lastMessage}>
+                            {formattedLastMessage}
+                          </span>
+                        </div>
+                        <div className={styles.itemFooter}>
+                          <span className={styles.chatTime}>
+                            {new Date(history.last_activity).toLocaleDateString()} at {' '}
+                            {new Date(history.last_activity).toLocaleTimeString([], { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
                 
-                {/* Pagination  */}
+                {/* Pagination */}
                 {totalPages > 1 && (
                   <Pagination
                     currentPage={currentPage}
